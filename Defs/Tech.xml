@@ -1,0 +1,63 @@
+<?xml version="1.0" ?>
+<Defs>
+    <ResearchProjectDef>
+        <defName>MedievalAge</defName>
+        <label>Medieval Age</label>
+        <description>Medieval</description>
+        <baseCost>1000</baseCost>
+        <techLevel>Medieval</techLevel>
+        <prerequisites>
+        </prerequisites>
+        <researchViewX>2.00</researchViewX>
+        <researchViewY>0.00</researchViewY>
+		<tab>Main</tab>
+    </ResearchProjectDef>
+    <ResearchProjectDef>
+        <defName>IndustrialAge</defName>
+        <label>Industrial Age</label>
+        <description>Industrial</description>
+        <baseCost>1000</baseCost>
+        <techLevel>Industrial</techLevel>
+        <prerequisites>
+        </prerequisites>
+        <researchViewX>1.00</researchViewX>
+        <researchViewY>0.00</researchViewY>
+		<tab>MedievalAge</tab>
+    </ResearchProjectDef>
+    <ResearchProjectDef>
+        <defName>SpacerAge</defName>
+        <label>Spacer Age</label>
+        <description>Spacer</description>
+        <baseCost>1000</baseCost>
+        <techLevel>Spacer</techLevel>
+        <prerequisites>
+        </prerequisites>
+        <researchViewX>1.00</researchViewX>
+        <researchViewY>0.00</researchViewY>
+		<tab>IndustrialAge</tab>
+    </ResearchProjectDef>
+    <ResearchProjectDef>
+        <defName>UltraAge</defName>
+        <label>Ultra Age</label>
+        <description>Ultra</description>
+        <baseCost>1000</baseCost>
+        <techLevel>Ultra</techLevel>
+        <prerequisites>
+        </prerequisites>
+        <researchViewX>1.00</researchViewX>
+        <researchViewY>0.00</researchViewY>
+		<tab>SpacerAge</tab>
+    </ResearchProjectDef>
+	<ResearchProjectDef>
+        <defName>ArchotechAge</defName>
+        <label>Archotech Age</label>
+        <description>Archotech</description>
+        <baseCost>1000</baseCost>
+        <techLevel>Archotech</techLevel>
+        <prerequisites>
+        </prerequisites>
+        <researchViewX>1.00</researchViewX>
+        <researchViewY>0.00</researchViewY>
+		<tab>UltraAge</tab>
+    </ResearchProjectDef>
+</Defs>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+    <name>RimAges</name>
+    <description>...</description>
+    <author>Markflynnman</author>
+    <supportedVersions>
+		<li>1.4</li>
+    </supportedVersions>
+    <packageId>markflynnman.rimages</packageId>
+</ModMetaData>
