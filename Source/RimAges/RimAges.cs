@@ -28,12 +28,15 @@ namespace RimAges {
             Ultra,
             Archotech
         }
+        public static List<ResearchProjectDef> techAgeResearch = new List<ResearchProjectDef>();
+        public static int lockOffset = 100000;
 
         static RimAges() {
             Harmony harmony = new Harmony("rimages.markflynnman.patch");
             Harmony.DEBUG = true;
             harmony.PatchAll();
-            Log.Error($"{modTag}");
+            Log.Message($"{modTag}");
+            InitTechAgeResearch();
 
             var tabs = DefDatabase<ResearchTabDef>.AllDefsListForReading.ListFullCopy();
             tabs = ManageTabs(tabs);
@@ -41,15 +44,21 @@ namespace RimAges {
             var researchDefs = DefDatabase<ResearchProjectDef>.AllDefsListForReading.ListFullCopy();
 
             foreach (var res in researchDefs) {
-                if (res.defName == "TreeSowing") { res.baseCost = 1; } // DEBUG
-                if (res.defName == "MedievalAge") { continue; }
-                if (res.techLevel != TechLevel.Neolithic) { res.baseCost += 100000; }
+                if (techAgeResearch.Contains(res)) { continue; }
+                if (res.techLevel != TechLevel.Neolithic) { res.baseCost += lockOffset; }
             }
 
             SortTabs(researchDefs, tabs);
             OrganizeTabs(researchDefs);
 
             ResearchPrerequisites(researchDefs, tabs);
+        }
+
+        static void InitTechAgeResearch() {
+            List<string> AgeDef = new List<string> { "MedievalAge", "IndustrialAge", "SpacerAge", "UltraAge", "ArchotechAge" };
+            foreach (var age in AgeDef) { 
+                techAgeResearch.Add(DefDatabase<ResearchProjectDef>.GetNamed(age));
+            }
         }
 
         static List<ResearchTabDef> ManageTabs(List<ResearchTabDef> tabs) {
@@ -173,13 +182,13 @@ namespace RimAges {
             foreach (var tab in researchByTab) {
                 var list = researchByTab.ToList();
                 foreach (var tech in list) {
-                    Log.Error($"{modTag} - Enum: {tabs[(int)(ResearchTabs)Enum.Parse(typeof(ResearchTabs), tech.First().techLevel.ToString())]} Target: {tabs[(int)(ResearchTabs)Enum.Parse(typeof(ResearchTabs), tech.First().techLevel.ToString()) + 1]}");
+                    Log.Warning($"{modTag} - Enum: {tabs[(int)(ResearchTabs)Enum.Parse(typeof(ResearchTabs), tech.First().techLevel.ToString())]} Target: {tabs[(int)(ResearchTabs)Enum.Parse(typeof(ResearchTabs), tech.First().techLevel.ToString()) + 1]}");
                     foreach (var def in tech) {
                         if (def.defName == "MedievalAge" || def.defName == "IndustrialAge" || def.defName == "SpacerAge" || def.defName == "UltraAge" || def.defName == "ArchotechAge" || def.techLevel == TechLevel.Archotech) {
                             continue;
                         }
 
-                        Log.Warning($"{modTag} Added: {DefDatabase<ResearchProjectDef>.GetNamed(tabs[(int)(ResearchTabs)Enum.Parse(typeof(ResearchTabs), tech.First().techLevel.ToString()) + 1].ToString()).defName} To: {def.defName}");
+                        Log.Message($"{modTag} Added: {DefDatabase<ResearchProjectDef>.GetNamed(tabs[(int)(ResearchTabs)Enum.Parse(typeof(ResearchTabs), tech.First().techLevel.ToString()) + 1].ToString()).defName} To: {def.defName}");
                         var resToAdd = DefDatabase<ResearchProjectDef>.GetNamed(tabs[(int)(ResearchTabs)Enum.Parse(typeof(ResearchTabs), tech.First().techLevel.ToString()) + 1].ToString());
 
                         foreach (var res in researchDefs) {
@@ -196,18 +205,15 @@ namespace RimAges {
             }
         }
 
-        // Set custom research as prerequisite of other research
-
+        // Reduce cost of research in unlocked age
+        public static void UnlockAge(string ageName, TechLevel ageLevel) {
+            var researchDefs = DefDatabase<ResearchProjectDef>.AllDefsListForReading.ListFullCopy();
+            foreach (var res in researchDefs) {
+                if (ageLevel == res.techLevel) {
+                    if (res.defName == ageName) { continue; }
+                    res.baseCost -= lockOffset;
+                }
+            }
+        }
     }
-
-    //[HarmonyPatch(typeof(ResearchManager))]
-    //[HarmonyPatch("FinishProject")]
-    //internal class Patch_FinishProject_Patch {
-    //    public static void Postfix() {
-    //        Log.Error($"{RimAges.modTag} Trigger");
-    //    }
-    //}
 }
-
-// Error in static constructor of RimAges.RimAges: System.TypeInitializationException: The type initializer for 'RimAges.RimAges' threw an exception. ---> System.NullReferenceException: Object reference not set to an instance of an object
-
