@@ -29,14 +29,18 @@ namespace RimAges {
             Archotech
         }
         public static List<ResearchProjectDef> techAgeResearch = new List<ResearchProjectDef>();
+        public static List<ResearchProjectDef> excludeRequirement = new List<ResearchProjectDef>();
         public static int lockOffset = 100000;
 
         static RimAges() {
             Harmony harmony = new Harmony("rimages.markflynnman.patch");
             Harmony.DEBUG = true;
             harmony.PatchAll();
+
             Log.Message($"{modTag}");
+
             InitTechAgeResearch();
+            InitExcludeRequirement();
 
             var tabs = DefDatabase<ResearchTabDef>.AllDefsListForReading.ListFullCopy();
             tabs = ManageTabs(tabs);
@@ -59,6 +63,20 @@ namespace RimAges {
             foreach (var age in AgeDef) { 
                 techAgeResearch.Add(DefDatabase<ResearchProjectDef>.GetNamed(age));
             }
+        }
+
+        static void InitExcludeRequirement() {
+            var researchDefs = DefDatabase<ResearchProjectDef>.AllDefsListForReading.ListFullCopy();
+            foreach (var res in researchDefs) {
+                if (res.techprintCount == 0 && res.RequiredStudiedThingCount == 0) { continue; }
+                excludeRequirement.Add(res);
+            }
+
+            Log.Error($"{modTag} Excluded Research:");
+            foreach (var res in excludeRequirement) {
+                Log.Error($"{modTag} {res}");
+            }
+            Log.Error($"{modTag} Total: {excludeRequirement.Count}");
         }
 
         static List<ResearchTabDef> ManageTabs(List<ResearchTabDef> tabs) {
@@ -184,9 +202,7 @@ namespace RimAges {
                 foreach (var tech in list) {
                     Log.Warning($"{modTag} - Enum: {tabs[(int)(ResearchTabs)Enum.Parse(typeof(ResearchTabs), tech.First().techLevel.ToString())]} Target: {tabs[(int)(ResearchTabs)Enum.Parse(typeof(ResearchTabs), tech.First().techLevel.ToString()) + 1]}");
                     foreach (var def in tech) {
-                        if (def.defName == "MedievalAge" || def.defName == "IndustrialAge" || def.defName == "SpacerAge" || def.defName == "UltraAge" || def.defName == "ArchotechAge" || def.techLevel == TechLevel.Archotech) {
-                            continue;
-                        }
+                        if (techAgeResearch.Contains(def) || excludeRequirement.Contains(def)) { continue; }
 
                         Log.Message($"{modTag} Added: {DefDatabase<ResearchProjectDef>.GetNamed(tabs[(int)(ResearchTabs)Enum.Parse(typeof(ResearchTabs), tech.First().techLevel.ToString()) + 1].ToString()).defName} To: {def.defName}");
                         var resToAdd = DefDatabase<ResearchProjectDef>.GetNamed(tabs[(int)(ResearchTabs)Enum.Parse(typeof(ResearchTabs), tech.First().techLevel.ToString()) + 1].ToString());
