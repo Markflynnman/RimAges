@@ -16,7 +16,7 @@
         <defName>IndustrialAge</defName>
         <label>Industrial Age</label>
         <description>Industrial</description>
-        <baseCost>1000</baseCost>
+        <baseCost>2000</baseCost>
         <techLevel>Industrial</techLevel>
         <prerequisites>
         </prerequisites>
@@ -28,7 +28,7 @@
         <defName>SpacerAge</defName>
         <label>Spacer Age</label>
         <description>Spacer</description>
-        <baseCost>1000</baseCost>
+        <baseCost>3000</baseCost>
         <techLevel>Spacer</techLevel>
         <prerequisites>
         </prerequisites>
@@ -40,7 +40,7 @@
         <defName>UltraAge</defName>
         <label>Ultra Age</label>
         <description>Ultra</description>
-        <baseCost>1000</baseCost>
+        <baseCost>4000</baseCost>
         <techLevel>Ultra</techLevel>
         <prerequisites>
         </prerequisites>
@@ -52,7 +52,7 @@
         <defName>ArchotechAge</defName>
         <label>Archotech Age</label>
         <description>Archotech</description>
-        <baseCost>1000</baseCost>
+        <baseCost>5000</baseCost>
         <techLevel>Archotech</techLevel>
         <prerequisites>
         </prerequisites>

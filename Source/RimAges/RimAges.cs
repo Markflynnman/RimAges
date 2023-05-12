@@ -1,18 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using Mono.Unix.Native;
 using RimWorld;
-using RimWorld.BaseGen;
-using Steamworks;
 using Verse;
-using Verse.AI;
-using Verse.Noise;
 using HarmonyLib;
 
 namespace RimAges {
@@ -20,14 +10,6 @@ namespace RimAges {
     public class RimAges : ResearchProjectDef {
 
         public static string modTag = "[RimAges]";
-        enum ResearchTabs {
-            Neolithic,
-            Medieval,
-            Industrial,
-            Spacer,
-            Ultra,
-            Archotech
-        }
         public static List<ResearchProjectDef> techAgeResearch = new List<ResearchProjectDef>();
         public static List<ResearchProjectDef> excludeRequirement = new List<ResearchProjectDef>();
         public static ResearchTabDef medievalTab = new ResearchTabDef();
@@ -118,7 +100,7 @@ namespace RimAges {
             foreach (var def in researchDefs) {
                 // Assign ResearchProjectDefs to correct tabs
                 if (def.defName == "MedievalAge" || def.defName == "IndustrialAge" || def.defName == "SpacerAge" || def.defName == "UltraAge" || def.defName == "ArchotechAge") { continue; }
-                def.tab = tabs[(int)(ResearchTabs)Enum.Parse(typeof(ResearchTabs), def.techLevel.ToString())];
+                def.tab = DefDatabase<ResearchTabDef>.GetNamed($"{def.techLevel}Age");
             }
         }
 
