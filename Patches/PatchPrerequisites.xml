@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<Patch>
+    <Operation Class="PatchOperationSequence">
+        <operations>
+            <li Class="PatchOperationAdd">
+                <xpath>Defs[ResearchProjectDef]/ResearchProjectDef[not(prerequisites)]</xpath>
+                <value>
+                    <prerequisites></prerequisites>
+                </value>
+            </li>
+        </operations>
+    </Operation>
+</Patch>

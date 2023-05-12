@@ -30,7 +30,7 @@ namespace RimAges {
         }
         public static List<ResearchProjectDef> techAgeResearch = new List<ResearchProjectDef>();
         public static List<ResearchProjectDef> excludeRequirement = new List<ResearchProjectDef>();
-        public static int lockOffset = 100000;
+        public static ResearchTabDef medievalTab = new ResearchTabDef();
 
         static RimAges() {
             Harmony harmony = new Harmony("rimages.markflynnman.patch");
@@ -47,15 +47,17 @@ namespace RimAges {
 
             var researchDefs = DefDatabase<ResearchProjectDef>.AllDefsListForReading.ListFullCopy();
 
-            foreach (var res in researchDefs) {
-                if (techAgeResearch.Contains(res)) { continue; }
-                if (res.techLevel != TechLevel.Neolithic) { res.baseCost += lockOffset; }
-            }
-
             SortTabs(researchDefs, tabs);
             OrganizeTabs(researchDefs);
 
             ResearchPrerequisites(researchDefs, tabs);
+
+            //var thingDefs = DefDatabase<ThingDef>.AllDefsListForReading.ListFullCopy();
+            //def.plant.sowResearchPrerequisites - Plant Research Prerequisites
+            //def.researchPrerequisites - Building Research Prerequisites
+
+            //var recipeDefs = DefDatabase<RecipeDef>.AllDefsListForReading.ListFullCopy();
+            //def.researchPrerequisites - Recipe Research Prerequisites
         }
 
         static void InitTechAgeResearch() {
@@ -72,11 +74,11 @@ namespace RimAges {
                 excludeRequirement.Add(res);
             }
 
-            Log.Error($"{modTag} Excluded Research:");
+            Log.Warning($"{modTag} Excluded Research:");
             foreach (var res in excludeRequirement) {
-                Log.Error($"{modTag} {res}");
+                Log.Warning($"{modTag} {res}");
             }
-            Log.Error($"{modTag} Total: {excludeRequirement.Count}");
+            Log.Warning($"{modTag} Total: {excludeRequirement.Count}");
         }
 
         static List<ResearchTabDef> ManageTabs(List<ResearchTabDef> tabs) {
@@ -190,46 +192,31 @@ namespace RimAges {
                 }
             }
 
-            foreach (var res in resList) { Log.Warning($"{modTag} Mod: {res.modContentPack} Name: {res.defName} X: {res.researchViewX}"); }
+            //foreach (var res in resList) { Log.Warning($"{modTag} Mod: {res.modContentPack} Name: {res.defName} X: {res.researchViewX}"); }
             ResearchProjectDef.GenerateNonOverlappingCoordinates(); // REQUIRED TO UPDATE RESEARCH POSITION
         }
 
         // Set other research as prerequisite of custom research
         static void ResearchPrerequisites(List<ResearchProjectDef> researchDefs, List<ResearchTabDef> tabs) {
-            var researchByTab = researchDefs.GroupBy(res => res.tab, res => res);
-            foreach (var tab in researchByTab) {
-                var list = researchByTab.ToList();
-                foreach (var tech in list) {
-                    Log.Warning($"{modTag} - Enum: {tabs[(int)(ResearchTabs)Enum.Parse(typeof(ResearchTabs), tech.First().techLevel.ToString())]} Target: {tabs[(int)(ResearchTabs)Enum.Parse(typeof(ResearchTabs), tech.First().techLevel.ToString()) + 1]}");
-                    foreach (var def in tech) {
-                        if (techAgeResearch.Contains(def) || excludeRequirement.Contains(def)) { continue; }
-
-                        Log.Message($"{modTag} Added: {DefDatabase<ResearchProjectDef>.GetNamed(tabs[(int)(ResearchTabs)Enum.Parse(typeof(ResearchTabs), tech.First().techLevel.ToString()) + 1].ToString()).defName} To: {def.defName}");
-                        var resToAdd = DefDatabase<ResearchProjectDef>.GetNamed(tabs[(int)(ResearchTabs)Enum.Parse(typeof(ResearchTabs), tech.First().techLevel.ToString()) + 1].ToString());
-
-                        foreach (var res in researchDefs) {
-                            if (res.defName == def.defName) {
-                                if (resToAdd.prerequisites == null) {
-                                    Log.Error($"{modTag} Prerequisite for {res.defName} returned null!");
-                                    continue;
-                                }
-                                resToAdd.prerequisites.Add(res);
-                            }
-                        }
+            foreach(var res in researchDefs) {
+                // Add current research to "Age" research prerequisites
+                if (res.techLevel != TechLevel.Archotech && res.techprintCount == 0 && res.RequiredStudiedThingCount == 0) {
+                    // Get index of current research techLevel in TechLevel enum, add 1 to get the next techLevel and add "Age" to the end to get correct research
+                    var ageRes = DefDatabase<ResearchProjectDef>.GetNamed($"{(TechLevel)(byte)Enum.Parse(typeof(TechLevel), res.techLevel.ToString()) + 1}Age");
+                    if (ageRes != res) {
+                        ageRes.prerequisites.Add(res);
                     }
                 }
-            }
-        }
 
-        // Reduce cost of research in unlocked age
-        public static void UnlockAge(string ageName, TechLevel ageLevel) {
-            var researchDefs = DefDatabase<ResearchProjectDef>.AllDefsListForReading.ListFullCopy();
-            foreach (var res in researchDefs) {
-                if (ageLevel == res.techLevel) {
-                    if (res.defName == ageName) { continue; }
-                    res.baseCost -= lockOffset;
+                // Add "Age" research to current research prerequisites if tech level is not neolithic and is not an "Age" research
+                if (res.techLevel != TechLevel.Neolithic && techAgeResearch.Contains(res) == false) {
+                    res.prerequisites.Add(DefDatabase<ResearchProjectDef>.GetNamed($"{res.techLevel}Age"));
                 }
             }
         }
+
+        // Currently not used
+        //public static void UnlockAge(string ageName, TechLevel ageLevel) {
+        //}
     }
 }
