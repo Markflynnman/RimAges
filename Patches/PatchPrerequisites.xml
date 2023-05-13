@@ -8,6 +8,18 @@
                     <prerequisites></prerequisites>
                 </value>
             </li>
+			<li Class="PatchOperationAdd">
+                <xpath>Defs[ThingDef]/ThingDef[not(researchPrerequisites) and building]</xpath>
+                <value>
+                    <researchPrerequisites></researchPrerequisites>
+                </value>
+            </li>
+            <li Class="PatchOperationAdd">
+                <xpath>Defs[ThingDef]/ThingDef/plant[not(sowResearchPrerequisites)]</xpath>
+                <value>
+                    <sowResearchPrerequisites></sowResearchPrerequisites>
+                </value>
+            </li>
         </operations>
     </Operation>
 </Patch>

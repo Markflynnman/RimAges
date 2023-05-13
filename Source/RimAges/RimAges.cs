@@ -33,12 +33,11 @@ namespace RimAges {
             OrganizeTabs(researchDefs);
             ResearchPrerequisites(researchDefs, tabs);
 
-            //var thingDefs = DefDatabase<ThingDef>.AllDefsListForReading.ListFullCopy();
-            //def.plant.sowResearchPrerequisites - Plant Research Prerequisites
-            //def.researchPrerequisites - Building Research Prerequisites
+            // Add research prerequisite to thing def
+            //DefDatabase<ThingDef>.GetNamed("SimpleResearchBench").researchPrerequisites.Add(DefDatabase<ResearchProjectDef>.GetNamed("MedievalResearch"));
 
-            //var recipeDefs = DefDatabase<RecipeDef>.AllDefsListForReading.ListFullCopy();
-            //def.researchPrerequisites - Recipe Research Prerequisites
+            // Add research prerequisite to plant def
+            //DefDatabase<ThingDef>.GetNamed("Plant_Devilstrand").plant.sowResearchPrerequisites.Add(DefDatabase<ResearchProjectDef>.GetNamed("SpacerPlants"));
         }
 
         static void InitTechAgeResearch() {
