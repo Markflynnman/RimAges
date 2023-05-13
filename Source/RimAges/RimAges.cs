@@ -7,7 +7,7 @@ using HarmonyLib;
 
 namespace RimAges {
     [StaticConstructorOnStartup]
-    public class RimAges : ResearchProjectDef {
+    public class RimAges {
 
         public static string modTag = "[RimAges]";
         public static List<ResearchProjectDef> techAgeResearch = new List<ResearchProjectDef>();
@@ -31,7 +31,6 @@ namespace RimAges {
 
             SortTabs(researchDefs, tabs);
             OrganizeTabs(researchDefs);
-
             ResearchPrerequisites(researchDefs, tabs);
 
             //var thingDefs = DefDatabase<ThingDef>.AllDefsListForReading.ListFullCopy();
@@ -56,11 +55,11 @@ namespace RimAges {
                 excludeRequirement.Add(res);
             }
 
-            Log.Warning($"{modTag} Excluded Research:");
-            foreach (var res in excludeRequirement) {
-                Log.Warning($"{modTag} {res}");
-            }
-            Log.Warning($"{modTag} Total: {excludeRequirement.Count}");
+            //Log.Warning($"{modTag} Excluded Research:");
+            //foreach (var res in excludeRequirement) {
+            //    Log.Warning($"{modTag} {res}");
+            //}
+            //Log.Warning($"{modTag} Total: {excludeRequirement.Count}");
         }
 
         static List<ResearchTabDef> ManageTabs(List<ResearchTabDef> tabs) {
@@ -96,14 +95,15 @@ namespace RimAges {
             return tabs;
         }
 
+        // Assign ResearchProjectDefs to correct tabs
         static void SortTabs(List<ResearchProjectDef> researchDefs, List<ResearchTabDef> tabs) {
             foreach (var def in researchDefs) {
-                // Assign ResearchProjectDefs to correct tabs
                 if (def.defName == "MedievalAge" || def.defName == "IndustrialAge" || def.defName == "SpacerAge" || def.defName == "UltraAge" || def.defName == "ArchotechAge") { continue; }
                 def.tab = DefDatabase<ResearchTabDef>.GetNamed($"{def.techLevel}Age");
             }
         }
 
+        // Clean up research nodes
         static void OrganizeTabs(List<ResearchProjectDef> researchDefs) {
             var researchByTab = researchDefs.GroupBy(res => res.tab, res => res);
             List<ResearchProjectDef> resList = new List<ResearchProjectDef>(); // DEBUG ONLY

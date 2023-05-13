@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using RimWorld;
-using Verse;
+﻿using Verse;
 using HarmonyLib;
 
 namespace RimAges {
@@ -27,4 +23,15 @@ namespace RimAges {
     //        }
     //    }
     //}
+
+    // No research patch
+    [HarmonyPatch(typeof(ResearchUtility), "ApplyPlayerStartingResearch")]
+    public class NewGamePatch {
+        public static bool Prefix() {
+            if (LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>().noResearch) {
+                return false;
+            }
+            return true;
+        }
+    }
 }

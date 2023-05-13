@@ -42,7 +42,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Patch_FinishProject_Patch.cs" />
+    <Compile Include="ModSettings.cs" />
+    <Compile Include="Patches.cs" />
     <Compile Include="RimAges.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
