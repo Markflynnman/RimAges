@@ -41,7 +41,7 @@ namespace RimAges {
         public static void Postfix() {
             Log.Warning($"{RimAges.modTag} - Settings saved at {DateTime.Now:hh:mm:ss tt}");
             RimAges.ApplyResearchCost();
-            //RimAges.ApplyEmptyResearch();  // Not Functional 
+            RimAges.ApplyEmptyResearch();
         }
     }
 }

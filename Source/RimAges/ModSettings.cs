@@ -9,7 +9,7 @@ namespace RimAges {
         public int tab;
 
         public bool noResearch;
-        public bool emptyResearch; // Not Functional 
+        public bool emptyResearch;
 
         public int MedievalAgeCost;
         public int IndustrialAgeCost;
@@ -25,7 +25,7 @@ namespace RimAges {
 
         public override void ExposeData() {
             Scribe_Values.Look(ref noResearch, "noResearch", true);
-            Scribe_Values.Look(ref emptyResearch, "emptyResearch", true); // Not Functional 
+            Scribe_Values.Look(ref emptyResearch, "emptyResearch", true);
 
             Scribe_Values.Look(ref MedievalAgeCost, "MedievalAgeCost", 1000);
             Scribe_Values.Look(ref IndustrialAgeCost, "IndustrialAgeCost", 2000);
@@ -71,6 +71,7 @@ namespace RimAges {
                 {
                     settings.tab = 1;
                     settings.Write();
+                    Log.Message($"{RimAges.modTag} - Empty Reasearch: {settings.emptyResearch} - {DateTime.Now:hh:mm:ss tt}");
                 }, settings.tab == 1)
             };
 
@@ -106,7 +107,7 @@ namespace RimAges {
             Listing_Standard listingStandard = new Listing_Standard();
             listingStandard.Begin(contentRect);
             listingStandard.CheckboxLabeled("No Starting Research", ref settings.noResearch, "Start the game with no research.");
-            listingStandard.CheckboxLabeled("Enable Empty Research", ref settings.emptyResearch, "Enable research that has no unlocks."); // Not Functional 
+            listingStandard.CheckboxLabeled("Enable Empty Research", ref settings.emptyResearch, "Enable research that has no unlocks.");
 
             if (spaceHeight == -500f) {
                 Rect space = listingStandard.GetRect(contentRect.height - buttonHeight);
@@ -134,41 +135,50 @@ namespace RimAges {
         }
 
         public static void DrawResearch(Rect contentRect, RimAgesSettings settings) {
+            int normalInc = 100;
+            int lockedInc = 0;
+
             Listing_Standard listingStandard = new Listing_Standard();
             listingStandard.Begin(contentRect);
 
             listingStandard.Label($"Medieval Age Cost: {settings.MedievalAgeCost}", -1, "Cost of Medieval Age research.");
-            listingStandard.IntAdjuster(ref settings.MedievalAgeCost, 100, 100);
+            listingStandard.IntAdjuster(ref settings.MedievalAgeCost, normalInc, 100);
 
             listingStandard.Label($"Industrial Age Cost: {settings.IndustrialAgeCost}", -1, "Cost of Industrial Age research");
-            listingStandard.IntAdjuster(ref settings.IndustrialAgeCost, 100, 100);
+            listingStandard.IntAdjuster(ref settings.IndustrialAgeCost, normalInc, 100);
 
             listingStandard.Label($"Spacer Age Cost: {settings.SpacerAgeCost}", -1, "Cost of Spacer Age research");
-            listingStandard.IntAdjuster(ref settings.SpacerAgeCost, 100, 100);
+            listingStandard.IntAdjuster(ref settings.SpacerAgeCost, normalInc, 100);
 
             listingStandard.Label($"Ultra Age Cost: {settings.UltraAgeCost}", -1, "Cost of Ultra Age research");
-            listingStandard.IntAdjuster(ref settings.UltraAgeCost, 100, 100);
+            listingStandard.IntAdjuster(ref settings.UltraAgeCost, normalInc, 100);
 
             listingStandard.Label($"Archotech Age Cost: {settings.ArchotechAgeCost}", -1, $"Cost of Archotech Age research");
-            listingStandard.IntAdjuster(ref settings.ArchotechAgeCost, 100, 100);
+            listingStandard.IntAdjuster(ref settings.ArchotechAgeCost, normalInc, 100);
 
             listingStandard.Label($"Medieval Cooking Cost: {settings.MedievalCookingCost}", -1, "Cost of Medieval Cooking research");
-            listingStandard.IntAdjuster(ref settings.MedievalCookingCost, 100, 100);
+            if (settings.MedievalCookingCost > 0) { listingStandard.IntAdjuster(ref settings.MedievalCookingCost, normalInc, 100); }
+            else { listingStandard.IntAdjuster(ref settings.MedievalCookingCost, lockedInc, 0); }
 
             listingStandard.Label($"Medieval Defenses Cost: {settings.MedievalDefensesCost}", -1, "Cost of Medieval Defenses research");
-            listingStandard.IntAdjuster(ref settings.MedievalDefensesCost, 100, 100);
+            if (settings.MedievalDefensesCost > 0) { listingStandard.IntAdjuster(ref settings.MedievalDefensesCost, normalInc, 100); }
+            else { listingStandard.IntAdjuster(ref settings.MedievalDefensesCost, lockedInc, 0); }
 
             listingStandard.Label($"Medieval Hygiene Cost: {settings.MedievalHygieneCost}", -1, "Cost of Medieval Hygiene research");
-            listingStandard.IntAdjuster(ref settings.MedievalHygieneCost, 100, 100);
+            if (settings.MedievalHygieneCost > 0) { listingStandard.IntAdjuster(ref settings.MedievalHygieneCost, normalInc, 100); }
+            else { listingStandard.IntAdjuster(ref settings.MedievalHygieneCost, lockedInc, 0); }
 
             listingStandard.Label($"Medieval Research Cost: {settings.MedievalResearchCost}", -1, "Cost of Medieval Research research");
-            listingStandard.IntAdjuster(ref settings.MedievalResearchCost, 100, 100);
+            if (settings.MedievalResearchCost > 0) { listingStandard.IntAdjuster(ref settings.MedievalResearchCost, normalInc, 100); }
+            else { listingStandard.IntAdjuster(ref settings.MedievalResearchCost, lockedInc, 0); }
 
             listingStandard.Label($"Training Targets Cost: {settings.TrainingTargetsCost}", -1, "Cost of Training Targets research");
-            listingStandard.IntAdjuster(ref settings.TrainingTargetsCost, 100, 100);
+            if (settings.TrainingTargetsCost > 0) { listingStandard.IntAdjuster(ref settings.TrainingTargetsCost, normalInc, 100); }
+            else { listingStandard.IntAdjuster(ref settings.TrainingTargetsCost, lockedInc, 0); }
 
             listingStandard.Label($"Spacer Plants Cost: {settings.SpacerPlantsCost}", -1, "Cost of Spacer Plants research");
-            listingStandard.IntAdjuster(ref settings.SpacerPlantsCost, 100, 100);
+            if (settings.SpacerPlantsCost > 0) { listingStandard.IntAdjuster(ref settings.SpacerPlantsCost, normalInc, 100); }
+            else { listingStandard.IntAdjuster(ref settings.SpacerPlantsCost, lockedInc, 0); }
 
             if (spaceHeight == -500f) {
                 Rect space = listingStandard.GetRect(contentRect.height - buttonHeight);
@@ -186,8 +196,6 @@ namespace RimAges {
             else {
                 rect.xMin = rectMin;
             }
-
-            //rect.xMax = rectMax;
             rect = rect.LeftPartPixels(rectLeft); // Width of button
             if (Widgets.ButtonText(rect, "Reset")) {
                 Log.Warning($"{RimAges.modTag} Pressed!");
@@ -228,6 +236,33 @@ namespace RimAges {
                 settings.MedievalResearchCost = MedievalResearchCost;
                 settings.TrainingTargetsCost = TrainingTargetsCost;
                 settings.SpacerPlantsCost = SpacerPlantsCost;
+            }
+        }
+        public static class RimAgesBackup {
+            public static int MedievalAgeCost = 1000;
+            public static int IndustrialAgeCost = 2000;
+            public static int SpacerAgeCost = 3000;
+            public static int UltraAgeCost = 4000;
+            public static int ArchotechAgeCost = 5000;
+            public static int MedievalCookingCost = 1000;
+            public static int MedievalDefensesCost = 1000;
+            public static int MedievalHygieneCost = 1000;
+            public static int MedievalResearchCost = 1000;
+            public static int TrainingTargetsCost = 1000;
+            public static int SpacerPlantsCost = 1000;
+            public static void SaveBackup() {
+                RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
+                if (settings.MedievalAgeCost > 0) { MedievalAgeCost = settings.MedievalAgeCost; }
+                if (settings.IndustrialAgeCost > 0) { IndustrialAgeCost = settings.IndustrialAgeCost; }
+                if (settings.SpacerAgeCost > 0) { SpacerAgeCost = settings.SpacerAgeCost; }
+                if (settings.UltraAgeCost > 0) { UltraAgeCost = settings.UltraAgeCost; }
+                if (settings.ArchotechAgeCost > 0) { ArchotechAgeCost = settings.ArchotechAgeCost; }
+                if (settings.MedievalCookingCost > 0) { MedievalCookingCost = settings.MedievalCookingCost; }
+                if (settings.MedievalDefensesCost > 0) { MedievalDefensesCost = settings.MedievalDefensesCost; }
+                if (settings.MedievalHygieneCost > 0) { MedievalHygieneCost = settings.MedievalHygieneCost; }
+                if (settings.MedievalResearchCost > 0) { MedievalResearchCost = settings.MedievalResearchCost; }
+                if (settings.TrainingTargetsCost > 0) { TrainingTargetsCost = settings.TrainingTargetsCost; }
+                if (settings.SpacerPlantsCost > 0) { SpacerPlantsCost = settings.SpacerPlantsCost; }
             }
         }
     }
