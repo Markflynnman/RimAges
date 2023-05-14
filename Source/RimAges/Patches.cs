@@ -1,5 +1,6 @@
 ﻿using Verse;
 using HarmonyLib;
+using System;
 
 namespace RimAges {
     //[HarmonyPatch(typeof(ResearchManager))]
@@ -32,6 +33,15 @@ namespace RimAges {
                 return false;
             }
             return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(ModSettings), "Write")]
+    public class ModSettingsPatch {
+        public static void Postfix() {
+            Log.Warning($"{RimAges.modTag} - Settings saved at {DateTime.Now:hh:mm:ss tt}");
+            RimAges.ApplyResearchCost();
+            //RimAges.ApplyEmptyResearch();  // Not Functional 
         }
     }
 }

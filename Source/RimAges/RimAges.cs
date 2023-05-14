@@ -12,7 +12,6 @@ namespace RimAges {
         public static string modTag = "[RimAges]";
         public static List<ResearchProjectDef> techAgeResearch = new List<ResearchProjectDef>();
         public static List<ResearchProjectDef> excludeRequirement = new List<ResearchProjectDef>();
-        public static ResearchTabDef medievalTab = new ResearchTabDef();
 
         static RimAges() {
             Harmony harmony = new Harmony("rimages.markflynnman.patch");
@@ -192,6 +191,62 @@ namespace RimAges {
                 // Add "Age" research to current research prerequisites if tech level is not neolithic and is not an "Age" research
                 if (res.techLevel != TechLevel.Neolithic && techAgeResearch.Contains(res) == false) {
                     res.prerequisites.Add(DefDatabase<ResearchProjectDef>.GetNamed($"{res.techLevel}Age"));
+                }
+            }
+        }
+
+        public static void ApplyResearchCost() {
+            RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
+            DefDatabase<ResearchProjectDef>.GetNamed("MedievalAge").baseCost = (settings.MedievalAgeCost);
+            DefDatabase<ResearchProjectDef>.GetNamed("IndustrialAge").baseCost = (settings.IndustrialAgeCost);
+            DefDatabase<ResearchProjectDef>.GetNamed("SpacerAge").baseCost = (settings.SpacerAgeCost);
+            DefDatabase<ResearchProjectDef>.GetNamed("UltraAge").baseCost = (settings.UltraAgeCost);
+            DefDatabase<ResearchProjectDef>.GetNamed("ArchotechAge").baseCost = (settings.ArchotechAgeCost);
+            DefDatabase<ResearchProjectDef>.GetNamed("MedievalCooking").baseCost = (settings.MedievalCookingCost);
+            DefDatabase<ResearchProjectDef>.GetNamed("MedievalDefenses").baseCost = (settings.MedievalDefensesCost);
+            DefDatabase<ResearchProjectDef>.GetNamed("MedievalHygiene").baseCost = (settings.MedievalHygieneCost);
+            DefDatabase<ResearchProjectDef>.GetNamed("MedievalResearch").baseCost = (settings.MedievalResearchCost);
+            DefDatabase<ResearchProjectDef>.GetNamed("TrainingTargets").baseCost = (settings.TrainingTargetsCost);
+            DefDatabase<ResearchProjectDef>.GetNamed("SpacerPlants").baseCost = (settings.SpacerPlantsCost);
+        }
+
+        public static void ApplyEmptyResearch() {  // Not Functional 
+            RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
+            if (settings.emptyResearch) {
+                var res = DefDatabase<ResearchProjectDef>.AllDefsListForReading.ListFullCopy();
+                foreach (var def in res) {
+                    if (def.modContentPack.ToString() == "markflynnman.rimages" && techAgeResearch.Contains(def) == false) {
+                        Log.Warning($"{modTag} - {def.defName}: {def.UnlockedDefs.Count}");
+                        if (def.UnlockedDefs.Count == 0) {
+                            switch(def.defName) 
+                            {
+                                case "MedievalCooking":
+                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalCooking").baseCost = (settings.MedievalCookingCost);
+                                    settings.MedievalCookingCost = 0;
+                                    break;
+                                case "MedievalDefenses":
+                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalDefenses").baseCost = (settings.MedievalDefensesCost);
+                                    settings.MedievalDefensesCost = 0;
+                                    break;
+                                case "MedievalHygiene":
+                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalHygiene").baseCost = (settings.MedievalHygieneCost);
+                                    settings.MedievalHygieneCost = 0;
+                                    break;
+                                case "MedievalResearch":
+                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalResearch").baseCost = (settings.MedievalResearchCost);
+                                    settings.MedievalResearchCost = 0;
+                                    break;
+                                case "TrainingTargets":
+                                    DefDatabase<ResearchProjectDef>.GetNamed("TrainingTargets").baseCost = (settings.TrainingTargetsCost);
+                                    settings.TrainingTargetsCost = 0;
+                                    break;
+                                case "SpacerPlants":
+                                    DefDatabase<ResearchProjectDef>.GetNamed("SpacerPlants").baseCost = (settings.SpacerPlantsCost);
+                                    settings.SpacerPlantsCost = 0;
+                                    break;
+                            }
+                        }
+                    }
                 }
             }
         }
