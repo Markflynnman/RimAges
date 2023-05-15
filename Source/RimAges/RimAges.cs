@@ -252,27 +252,27 @@ namespace RimAges {
                             switch (def.defName) {
                                 case "MedievalCooking":
                                     DefDatabase<ResearchProjectDef>.GetNamed("MedievalCooking").baseCost = (settings.MedievalCookingCost);
-                                    settings.MedievalCookingCost = RimAgesMod.RimAgesBackup.MedievalCookingCost;
+                                    settings.MedievalCookingCost = settings.ResearchCostBackup["MedievalCookingCost"];
                                     break;
                                 case "MedievalDefenses":
                                     DefDatabase<ResearchProjectDef>.GetNamed("MedievalDefenses").baseCost = (settings.MedievalDefensesCost);
-                                    settings.MedievalDefensesCost = RimAgesMod.RimAgesBackup.MedievalDefensesCost;
+                                    settings.MedievalDefensesCost = settings.ResearchCostBackup["MedievalDefensesCost"];
                                     break;
                                 case "MedievalHygiene":
                                     DefDatabase<ResearchProjectDef>.GetNamed("MedievalHygiene").baseCost = (settings.MedievalHygieneCost);
-                                    settings.MedievalHygieneCost = RimAgesMod.RimAgesBackup.MedievalHygieneCost;
+                                    settings.MedievalHygieneCost = settings.ResearchCostBackup["MedievalHygieneCost"];
                                     break;
                                 case "MedievalResearch":
                                     DefDatabase<ResearchProjectDef>.GetNamed("MedievalResearch").baseCost = (settings.MedievalResearchCost);
-                                    settings.MedievalResearchCost = RimAgesMod.RimAgesBackup.MedievalResearchCost;
+                                    settings.MedievalResearchCost = settings.ResearchCostBackup["MedievalResearchCost"];
                                     break;
                                 case "TrainingTargets":
                                     DefDatabase<ResearchProjectDef>.GetNamed("TrainingTargets").baseCost = (settings.TrainingTargetsCost);
-                                    settings.TrainingTargetsCost = RimAgesMod.RimAgesBackup.TrainingTargetsCost;
+                                    settings.TrainingTargetsCost = settings.ResearchCostBackup["TrainingTargetsCost"];
                                     break;
                                 case "SpacerPlants":
                                     DefDatabase<ResearchProjectDef>.GetNamed("SpacerPlants").baseCost = (settings.SpacerPlantsCost);
-                                    settings.SpacerPlantsCost = RimAgesMod.RimAgesBackup.SpacerPlantsCost;
+                                    settings.SpacerPlantsCost = settings.ResearchCostBackup["SpacerPlantsCost"];
                                     break;
                             }
                         }
@@ -286,27 +286,27 @@ namespace RimAges {
                         switch (def.defName) {
                             case "MedievalCooking":
                                 DefDatabase<ResearchProjectDef>.GetNamed("MedievalCooking").baseCost = (settings.MedievalCookingCost);
-                                settings.MedievalCookingCost = RimAgesMod.RimAgesBackup.MedievalCookingCost;
+                                settings.MedievalCookingCost = settings.ResearchCostBackup["MedievalCookingCost"];
                                 break;
                             case "MedievalDefenses":
                                 DefDatabase<ResearchProjectDef>.GetNamed("MedievalDefenses").baseCost = (settings.MedievalDefensesCost);
-                                settings.MedievalDefensesCost = RimAgesMod.RimAgesBackup.MedievalDefensesCost;
+                                settings.MedievalDefensesCost = settings.ResearchCostBackup["MedievalDefensesCost"];
                                 break;
                             case "MedievalHygiene":
                                 DefDatabase<ResearchProjectDef>.GetNamed("MedievalHygiene").baseCost = (settings.MedievalHygieneCost);
-                                settings.MedievalHygieneCost = RimAgesMod.RimAgesBackup.MedievalHygieneCost;
+                                settings.MedievalHygieneCost = settings.ResearchCostBackup["MedievalHygieneCost"];
                                 break;
                             case "MedievalResearch":
                                 DefDatabase<ResearchProjectDef>.GetNamed("MedievalResearch").baseCost = (settings.MedievalResearchCost);
-                                settings.MedievalResearchCost = RimAgesMod.RimAgesBackup.MedievalResearchCost;
+                                settings.MedievalResearchCost = settings.ResearchCostBackup["MedievalResearchCost"];
                                 break;
                             case "TrainingTargets":
                                 DefDatabase<ResearchProjectDef>.GetNamed("TrainingTargets").baseCost = (settings.TrainingTargetsCost);
-                                settings.TrainingTargetsCost = RimAgesMod.RimAgesBackup.TrainingTargetsCost;
+                                settings.TrainingTargetsCost = settings.ResearchCostBackup["TrainingTargetsCost"];
                                 break;
                             case "SpacerPlants":
                                 DefDatabase<ResearchProjectDef>.GetNamed("SpacerPlants").baseCost = (settings.SpacerPlantsCost);
-                                settings.SpacerPlantsCost = RimAgesMod.RimAgesBackup.SpacerPlantsCost;
+                                settings.SpacerPlantsCost = settings.ResearchCostBackup["SpacerPlantsCost"];
                                 break;
                         }
                     }

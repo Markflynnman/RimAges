@@ -22,6 +22,7 @@ namespace RimAges {
         public int MedievalResearchCost;
         public int TrainingTargetsCost;
         public int SpacerPlantsCost;
+        public Dictionary<string, int> ResearchCostBackup = new Dictionary<string, int>();
 
         public override void ExposeData() {
             Scribe_Values.Look(ref noResearch, "noResearch", true);
@@ -38,6 +39,7 @@ namespace RimAges {
             Scribe_Values.Look(ref MedievalResearchCost, "MedievalResearchCost", 1000);
             Scribe_Values.Look(ref TrainingTargetsCost, "TrainingTargetsCost", 1000);
             Scribe_Values.Look(ref SpacerPlantsCost, "SpacerPlantsCost", 1000);
+            Scribe_Collections.Look(ref ResearchCostBackup, "ResearchCostBackup", LookMode.Value, LookMode.Value);
 
             base.ExposeData();
         }
@@ -239,30 +241,30 @@ namespace RimAges {
             }
         }
         public static class RimAgesBackup {
-            public static int MedievalAgeCost = 1000;
-            public static int IndustrialAgeCost = 2000;
-            public static int SpacerAgeCost = 3000;
-            public static int UltraAgeCost = 4000;
-            public static int ArchotechAgeCost = 5000;
-            public static int MedievalCookingCost = 1000;
-            public static int MedievalDefensesCost = 1000;
-            public static int MedievalHygieneCost = 1000;
-            public static int MedievalResearchCost = 1000;
-            public static int TrainingTargetsCost = 1000;
-            public static int SpacerPlantsCost = 1000;
             public static void SaveBackup() {
                 RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
-                if (settings.MedievalAgeCost > 0) { MedievalAgeCost = settings.MedievalAgeCost; }
-                if (settings.IndustrialAgeCost > 0) { IndustrialAgeCost = settings.IndustrialAgeCost; }
-                if (settings.SpacerAgeCost > 0) { SpacerAgeCost = settings.SpacerAgeCost; }
-                if (settings.UltraAgeCost > 0) { UltraAgeCost = settings.UltraAgeCost; }
-                if (settings.ArchotechAgeCost > 0) { ArchotechAgeCost = settings.ArchotechAgeCost; }
-                if (settings.MedievalCookingCost > 0) { MedievalCookingCost = settings.MedievalCookingCost; }
-                if (settings.MedievalDefensesCost > 0) { MedievalDefensesCost = settings.MedievalDefensesCost; }
-                if (settings.MedievalHygieneCost > 0) { MedievalHygieneCost = settings.MedievalHygieneCost; }
-                if (settings.MedievalResearchCost > 0) { MedievalResearchCost = settings.MedievalResearchCost; }
-                if (settings.TrainingTargetsCost > 0) { TrainingTargetsCost = settings.TrainingTargetsCost; }
-                if (settings.SpacerPlantsCost > 0) { SpacerPlantsCost = settings.SpacerPlantsCost; }
+
+                if (settings.ResearchCostBackup == null) { InitResearchCostBackup(); }
+
+                if (settings.MedievalCookingCost > 0) { settings.ResearchCostBackup["MedievalCookingCost"] = settings.MedievalCookingCost; }
+                if (settings.MedievalDefensesCost > 0) { settings.ResearchCostBackup["MedievalDefensesCost"] = settings.MedievalDefensesCost; }
+                if (settings.MedievalHygieneCost > 0) { settings.ResearchCostBackup["MedievalHygieneCost"] = settings.MedievalHygieneCost; }
+                if (settings.MedievalResearchCost > 0) { settings.ResearchCostBackup["MedievalResearchCost"] = settings.MedievalResearchCost; }
+                if (settings.TrainingTargetsCost > 0) { settings.ResearchCostBackup["TrainingTargetsCost"] = settings.TrainingTargetsCost; }
+                if (settings.SpacerPlantsCost > 0) { settings.ResearchCostBackup["SpacerPlantsCost"] = settings.SpacerPlantsCost; }
+            }
+
+            public static void InitResearchCostBackup() {
+                RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
+                settings.ResearchCostBackup = new Dictionary<string, int>() 
+                { 
+                    {"MedievalCookingCost", 1000},
+                    {"MedievalDefensesCost", 1000},
+                    {"MedievalHygieneCost", 1000},
+                    {"MedievalResearchCost", 1000},
+                    {"TrainingTargetsCost", 1000},
+                    {"SpacerPlantsCost", 1000}
+                };
             }
         }
     }
