@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System;
 using UnityEngine;
 using Verse;
+using static RimAges.RimAgesSettings;
 
 namespace RimAges {
     public class RimAgesSettings : ModSettings {
@@ -23,6 +24,9 @@ namespace RimAges {
         public int TrainingTargetsCost;
         public int SpacerPlantsCost;
         public Dictionary<string, int> ResearchCostBackup = new Dictionary<string, int>();
+
+        public static Vector2 scrollPos;
+        public static Vector2 scrollPos2;
 
         public override void ExposeData() {
             Scribe_Values.Look(ref noResearch, "noResearch", true);
@@ -64,17 +68,19 @@ namespace RimAges {
             Widgets.DrawMenuSection(inRect);
             List<TabRecord> tabs = new List<TabRecord>
             {
-                new TabRecord("Main", delegate
-                {
+                new TabRecord("Main", delegate {
                     settings.tab = 0;
                     settings.Write();
                 }, settings.tab == 0),
-                new TabRecord("Research".Translate(), delegate
-                {
+                new TabRecord("Research Cost", delegate {
                     settings.tab = 1;
                     settings.Write();
                     Log.Message($"{RimAges.modTag} - Empty Reasearch: {settings.emptyResearch} - {DateTime.Now:hh:mm:ss tt}");
-                }, settings.tab == 1)
+                }, settings.tab == 1),
+                new TabRecord("Research Unlocks", delegate {
+                    settings.tab = 2;
+                    settings.Write();
+                }, settings.tab == 2)
             };
 
             TabDrawer.DrawTabs(tabRect, tabs);
@@ -84,55 +90,138 @@ namespace RimAges {
             if (settings.tab == 1) {
                 DrawResearch(inRect.ContractedBy(10f), settings);
             }
+            if (settings.tab == 2) {
+                DrawTest(inRect.ContractedBy(10f), settings);
+            }
             base.DoSettingsWindowContents(inRect);
         }
 
-        [TweakValue("rectMin", -1000f, 1000f)]
+        [TweakValue("RimAges", -1000f, 1000f)]
         public static float rectMin = -1000f;
 
-        [TweakValue("rectOff", -100f, 100f)]
+        [TweakValue("RimAges", -100f, 100f)]
         public static float rectOff = 60f;
 
-        [TweakValue("rectLeft", -1000f, 1000f)]
+        [TweakValue("RimAges", -1000f, 1000f)]
         public static float rectLeft = 120f;
 
-        [TweakValue("buttonHeight", 0f, 100f)]
+        [TweakValue("RimAges", 0f, 100f)]
         public static float buttonHeight = 40f;
 
-        [TweakValue("spaceHeight", -500f, 500f)]
+        [TweakValue("RimAges", -500f, 500f)]
         public static float spaceHeight = -500f;
 
-        [TweakValue("spaceOff", -100f, 100f)]
+        [TweakValue("RimAges", -100f, 100f)]
         public static float spaceOff = -50f;
+
+        [TweakValue("RimAges", 0, 150)]
+        public static int lines = 0;
+
+        public static void DrawTest(Rect contentRect, RimAgesSettings settings) {
+            Listing_Standard listingStandard = new Listing_Standard();
+
+            Rect resetRect = contentRect;
+            listingStandard.Begin(resetRect);
+            DrawResetButton(resetRect, listingStandard);
+            listingStandard.End();
+
+            // Left Side Scroll
+            Rect scrollRect = contentRect;
+            scrollRect.y += 40f;
+            scrollRect.yMax -= 102f;
+            scrollRect.xMax -= (scrollRect.width / 2) + 30;
+
+            Rect leftBackground = scrollRect.ContractedBy(-5f);
+            Widgets.DrawWindowBackground(leftBackground);
+
+            Rect listRect = new Rect(0f, 0f, scrollRect.width - 30f, (150) * 22);
+
+            Widgets.BeginScrollView(scrollRect, ref scrollPos, listRect, true);
+            listingStandard.Begin(listRect);
+            int lineHeight = 22;
+            int cellPosition;
+            int lineNumber;
+            lineNumber = cellPosition = 0;
+            for (int i = 0; i < 150; i++) {
+                cellPosition += lineHeight;
+                ++lineNumber;
+
+                Rect rect = listingStandard.GetRect(lineHeight);
+                Widgets.Label(rect, "-");
+                if (lineNumber % 2 != 1) Widgets.DrawLightHighlight(rect);
+            }
+            listingStandard.End();
+            Widgets.EndScrollView();
+
+            // Right Side Scroll
+            Rect scrollEnabledRect = contentRect;
+            scrollEnabledRect.y += 40f;
+            scrollEnabledRect.yMax -= 102f;
+            scrollEnabledRect.xMin += (scrollEnabledRect.width / 2) + 30;
+
+            Rect rightBackground = scrollEnabledRect.ContractedBy(-5f);
+            Widgets.DrawWindowBackground(rightBackground);
+
+            Rect listEnabledRect = new Rect(0f, 0f, scrollEnabledRect.width - 30f, (lines) * 22);
+
+            Widgets.BeginScrollView(scrollEnabledRect, ref scrollPos2, listEnabledRect, true);
+            listingStandard.Begin(listEnabledRect);
+            int lineHeight2 = 22;
+            int cellPosition2;
+            int lineNumber2;
+            lineNumber2 = cellPosition2 = 0;
+            for (int i = 0; i < lines; i++) {
+                cellPosition2 += lineHeight2;
+                ++lineNumber2;
+
+                Rect rect = listingStandard.GetRect(lineHeight2);
+                Widgets.Label(rect, "-");
+                if (lineNumber2 % 2 != 1) Widgets.DrawLightHighlight(rect);
+            }
+            listingStandard.End();
+            Widgets.EndScrollView();
+
+            // Transfer Buttons
+            Rect transferButtons = contentRect;
+            transferButtons.yMin += (contentRect.height / 2) - 35;
+            transferButtons.yMax -= (contentRect.height / 2) - 50;
+            transferButtons.xMin += (contentRect.width / 2) - 25;
+            transferButtons.xMax -= (contentRect.width / 2) - 25;
+
+            //Rect testBackground = transferButtons;
+            //Widgets.DrawWindowBackground(testBackground);
+
+            listingStandard.Begin(transferButtons);
+            Rect addRect = listingStandard.GetRect(30f); // Height of button
+            Rect space = listingStandard.GetRect(15f);
+            Rect removeRect = listingStandard.GetRect(30f); // Height of button
+            //transferRect.xMin = (transferButtons.width / 2);
+
+            //transferRect = transferRect.LeftPartPixels(rectLeft); // Width of button
+            if (Widgets.ButtonText(addRect, "+")) {
+                lines += 1;
+            }
+
+            Widgets.Label(space, "");
+
+            if (Widgets.ButtonText(removeRect, "-")) {
+                lines -= 1;
+            }
+            listingStandard.End();
+        }
 
         public static void DrawMain(Rect contentRect, RimAgesSettings settings) {
             Listing_Standard listingStandard = new Listing_Standard();
+
+            Rect resetRect = contentRect;
+            listingStandard.Begin(resetRect);
+            DrawResetButton(resetRect, listingStandard);
+            listingStandard.End();
+
             listingStandard.Begin(contentRect);
             listingStandard.CheckboxLabeled("No Starting Research", ref settings.noResearch, "Start the game with no research.");
             listingStandard.CheckboxLabeled("Enable Empty Research", ref settings.emptyResearch, "Enable research that has no unlocks.");
 
-            if (spaceHeight == -500f) {
-                Rect space = listingStandard.GetRect(contentRect.height - buttonHeight);
-                Widgets.Label(space, "");
-            }
-            else {
-                Rect space = listingStandard.GetRect(contentRect.height + spaceOff);
-                Widgets.Label(space, "");
-            }
-
-            Rect rect = listingStandard.GetRect(buttonHeight); // Height of button
-            if (rectMin == -1000f) {
-                rect.xMin = (contentRect.width / 2) - rectOff;
-            }
-            else {
-                rect.xMin = rectMin;
-            }
-
-            rect = rect.LeftPartPixels(rectLeft); // Width of button
-            if (Widgets.ButtonText(rect, "Reset")) {
-                Log.Warning($"{RimAges.modTag} Pressed!");
-                RimAgesDefaults.RimAgesSettingsReset();
-            }
             listingStandard.End();
         }
 
@@ -141,6 +230,12 @@ namespace RimAges {
             int lockedInc = 0;
 
             Listing_Standard listingStandard = new Listing_Standard();
+
+            Rect resetRect = contentRect;
+            listingStandard.Begin(resetRect);
+            DrawResetButton(resetRect, listingStandard);
+            listingStandard.End();
+
             listingStandard.Begin(contentRect);
 
             listingStandard.Label($"Medieval Age Cost: {settings.MedievalAgeCost}", -1, "Cost of Medieval Age research.");
@@ -182,6 +277,10 @@ namespace RimAges {
             if (settings.SpacerPlantsCost > 0) { listingStandard.IntAdjuster(ref settings.SpacerPlantsCost, normalInc, 100); }
             else { listingStandard.IntAdjuster(ref settings.SpacerPlantsCost, lockedInc, 0); }
 
+            listingStandard.End();
+        }
+
+        public static void DrawResetButton(Rect contentRect, Listing_Standard listingStandard) {
             if (spaceHeight == -500f) {
                 Rect space = listingStandard.GetRect(contentRect.height - buttonHeight);
                 Widgets.Label(space, "");
@@ -198,12 +297,13 @@ namespace RimAges {
             else {
                 rect.xMin = rectMin;
             }
+
             rect = rect.LeftPartPixels(rectLeft); // Width of button
             if (Widgets.ButtonText(rect, "Reset")) {
                 Log.Warning($"{RimAges.modTag} Pressed!");
                 RimAgesDefaults.RimAgesSettingsReset();
+                lines += 1;
             }
-            listingStandard.End();
         }
 
         public class RimAgesDefaults {
