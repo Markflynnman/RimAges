@@ -35,8 +35,17 @@ namespace RimAges {
             // Add research prerequisite to thing def
             DefDatabase<ThingDef>.GetNamed("SimpleResearchBench").researchPrerequisites.Add(DefDatabase<ResearchProjectDef>.GetNamed("MedievalResearch"));
 
+            if (DefDatabase<TerrainDef>.GetNamed("WoodPlankFloor").researchPrerequisites != null) {
+                Log.Warning($"{modTag} - researchPrerequisites found");
+                DefDatabase<TerrainDef>.GetNamed("WoodPlankFloor").researchPrerequisites.Add(DefDatabase<ResearchProjectDef>.GetNamed("ArchotechAge"));
+            }
+            else {
+                Log.Warning($"{modTag} - researchPrerequisites null");
+            }
+
             // Add research prerequisite to plant def
-            DefDatabase<ThingDef>.GetNamed("Plant_Devilstrand").plant.sowResearchPrerequisites.Add(DefDatabase<ResearchProjectDef>.GetNamed("SpacerPlants"));
+            DefDatabase<ThingDef>.GetNamed("Plant_Devilstrand").plant.sowResearchPrerequisites.Clear();
+            //DefDatabase<ThingDef>.GetNamed("Plant_Devilstrand").plant.sowResearchPrerequisites.Add(DefDatabase<ResearchProjectDef>.GetNamed("SpacerPlants"));
 
             ApplyEmptyResearch();
         }
@@ -312,6 +321,10 @@ namespace RimAges {
                     }
                 }
             }
+        }
+
+        public static void UpdateResearch() {
+            Log.Message($"{modTag} - TODO: ADD SYSTEM TO UPDATE RESEARCH");
         }
 
         // Currently not used

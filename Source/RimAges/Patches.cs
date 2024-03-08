@@ -42,6 +42,7 @@ namespace RimAges {
             Log.Warning($"{RimAges.modTag} - Settings saved at {DateTime.Now:hh:mm:ss tt}");
             RimAges.ApplyResearchCost();
             RimAges.ApplyEmptyResearch();
+            RimAges.UpdateResearch();
         }
     }
 }

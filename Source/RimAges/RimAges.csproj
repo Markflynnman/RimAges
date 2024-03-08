@@ -46,6 +46,7 @@
     <Compile Include="Patches.cs" />
     <Compile Include="RimAges.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RimAges_Utility.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Krafs.Rimworld.Ref">

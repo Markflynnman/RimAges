@@ -4,6 +4,11 @@ using System;
 using UnityEngine;
 using Verse;
 using static RimAges.RimAgesSettings;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Diagnostics.Eventing.Reader;
+using Steamworks;
+
 
 namespace RimAges {
     public class RimAgesSettings : ModSettings {
@@ -24,9 +29,18 @@ namespace RimAges {
         public int TrainingTargetsCost;
         public int SpacerPlantsCost;
         public Dictionary<string, int> ResearchCostBackup = new Dictionary<string, int>();
+        
 
-        public static Vector2 scrollPos;
-        public static Vector2 scrollPos2;
+        public static Vector2 leftScrollPos;
+        public static Vector2 rightScrollPos;
+        public static int currentPage = 0;
+        public static string currentResearch = "Machining";
+        public static bool dragging = false;
+        public static Vector2 boxPos = new Vector2(200, 300);
+        public static bool researchDropDownActive = false;
+        public static bool filterDropDownActive = false;
+        public static bool assignedDefsFilter = false;
+        public static string searchFilter;
 
         public override void ExposeData() {
             Scribe_Values.Look(ref noResearch, "noResearch", true);
@@ -51,6 +65,7 @@ namespace RimAges {
 
     public class RimAgesMod : Mod {
         RimAgesSettings settings;
+        public static List<Def> allDefs = new List<Def>();
 
         public RimAgesMod(ModContentPack content) : base(content) {
             settings = GetSettings<RimAgesSettings>();
@@ -61,9 +76,20 @@ namespace RimAges {
         }
 
         public override void DoSettingsWindowContents(Rect inRect) {
+            List<String> blacklist = new List<String> { "Sandstone_Smooth", "Granite_Smooth", "Limestone_Smooth", "Slate_Smooth", "Marble_Smooth" };
+            if (allDefs.NullOrEmpty()) {
+                //!x.IsBlueprint && !x.IsFrame && !x.isUnfinishedThing && (x.category == ThingCategory.Item || x.category == ThingCategory.Building || x.category == ThingCategory.Plant || x.category == ThingCategory.Pawn)))
+                allDefs = allDefs.Concat(DefDatabase<ThingDef>.AllDefs.Where(x => !x.IsBlueprint && !x.isMechClusterThreat && x.BuildableByPlayer && (x.category == ThingCategory.Building || x.category == ThingCategory.Plant))) /////
+                                 .Concat(DefDatabase<TerrainDef>.AllDefs.Where(x => x.IsFloor && !blacklist.Contains(x.defName)))
+                                 //.Concat(DefDatabase<ThingDef>.AllDefs.Where(x => x.category == ThingCategory.Item && x.recipeMaker != null))
+                                 .Distinct().ToList(); // TODO: Filter out defs that are not useable by players to prevent "no researchPrerequisite" error logs... it causes massive lag
+                //allDefs = allDefs.Concat(DefDatabase<ThingDef>.AllDefs.Where(x => x.category == ThingCategory.Item && x.recipeMaker != null))
+                //                 .Distinct().ToList();
+            }
+
             Rect tabRect = inRect;
             tabRect.y -= 8f;
-            tabRect.x += 100;
+            tabRect.x += 94;
             inRect.y -= 8f;
             Widgets.DrawMenuSection(inRect);
             List<TabRecord> tabs = new List<TabRecord>
@@ -71,16 +97,27 @@ namespace RimAges {
                 new TabRecord("Main", delegate {
                     settings.tab = 0;
                     settings.Write();
+                    researchDropDownActive = false;
+                    filterDropDownActive = false;
                 }, settings.tab == 0),
                 new TabRecord("Research Cost", delegate {
                     settings.tab = 1;
                     settings.Write();
+                    researchDropDownActive = false;
+                    filterDropDownActive = false;
                     Log.Message($"{RimAges.modTag} - Empty Reasearch: {settings.emptyResearch} - {DateTime.Now:hh:mm:ss tt}");
                 }, settings.tab == 1),
                 new TabRecord("Research Unlocks", delegate {
                     settings.tab = 2;
+                    currentPage = 0;
                     settings.Write();
-                }, settings.tab == 2)
+                }, settings.tab == 2),
+                new TabRecord("Drag & Drop", delegate {
+                    settings.tab = 3;
+                    settings.Write();
+                    researchDropDownActive = false;
+                    filterDropDownActive = false;
+                }, settings.tab == 3)
             };
 
             TabDrawer.DrawTabs(tabRect, tabs);
@@ -88,10 +125,13 @@ namespace RimAges {
                 DrawMain(inRect.ContractedBy(10f), settings);
             }
             if (settings.tab == 1) {
-                DrawResearch(inRect.ContractedBy(10f), settings);
+                DrawResearchCost(inRect.ContractedBy(10f), settings);
             }
             if (settings.tab == 2) {
-                DrawTest(inRect.ContractedBy(10f), settings);
+                DrawResearchTab(inRect.ContractedBy(10f), settings);
+            }
+            if (settings.tab == 3) {
+                DrawResearchSelection(inRect.ContractedBy(10f), settings);
             }
             base.DoSettingsWindowContents(inRect);
         }
@@ -103,7 +143,7 @@ namespace RimAges {
         public static float rectOff = 60f;
 
         [TweakValue("RimAges", -1000f, 1000f)]
-        public static float rectLeft = 120f;
+        public static float buttonWidth = 120f;
 
         [TweakValue("RimAges", 0f, 100f)]
         public static float buttonHeight = 40f;
@@ -117,98 +157,11 @@ namespace RimAges {
         [TweakValue("RimAges", 0, 150)]
         public static int lines = 0;
 
-        public static void DrawTest(Rect contentRect, RimAgesSettings settings) {
-            Listing_Standard listingStandard = new Listing_Standard();
+        [TweakValue("RimAges", -150, 150)]
+        public static float offset = 0;
 
-            Rect resetRect = contentRect;
-            listingStandard.Begin(resetRect);
-            DrawResetButton(resetRect, listingStandard);
-            listingStandard.End();
-
-            // Left Side Scroll
-            Rect scrollRect = contentRect;
-            scrollRect.y += 40f;
-            scrollRect.yMax -= 102f;
-            scrollRect.xMax -= (scrollRect.width / 2) + 30;
-
-            Rect leftBackground = scrollRect.ContractedBy(-5f);
-            Widgets.DrawWindowBackground(leftBackground);
-
-            Rect listRect = new Rect(0f, 0f, scrollRect.width - 30f, (150) * 22);
-
-            Widgets.BeginScrollView(scrollRect, ref scrollPos, listRect, true);
-            listingStandard.Begin(listRect);
-            int lineHeight = 22;
-            int cellPosition;
-            int lineNumber;
-            lineNumber = cellPosition = 0;
-            for (int i = 0; i < 150; i++) {
-                cellPosition += lineHeight;
-                ++lineNumber;
-
-                Rect rect = listingStandard.GetRect(lineHeight);
-                Widgets.Label(rect, "-");
-                if (lineNumber % 2 != 1) Widgets.DrawLightHighlight(rect);
-            }
-            listingStandard.End();
-            Widgets.EndScrollView();
-
-            // Right Side Scroll
-            Rect scrollEnabledRect = contentRect;
-            scrollEnabledRect.y += 40f;
-            scrollEnabledRect.yMax -= 102f;
-            scrollEnabledRect.xMin += (scrollEnabledRect.width / 2) + 30;
-
-            Rect rightBackground = scrollEnabledRect.ContractedBy(-5f);
-            Widgets.DrawWindowBackground(rightBackground);
-
-            Rect listEnabledRect = new Rect(0f, 0f, scrollEnabledRect.width - 30f, (lines) * 22);
-
-            Widgets.BeginScrollView(scrollEnabledRect, ref scrollPos2, listEnabledRect, true);
-            listingStandard.Begin(listEnabledRect);
-            int lineHeight2 = 22;
-            int cellPosition2;
-            int lineNumber2;
-            lineNumber2 = cellPosition2 = 0;
-            for (int i = 0; i < lines; i++) {
-                cellPosition2 += lineHeight2;
-                ++lineNumber2;
-
-                Rect rect = listingStandard.GetRect(lineHeight2);
-                Widgets.Label(rect, "-");
-                if (lineNumber2 % 2 != 1) Widgets.DrawLightHighlight(rect);
-            }
-            listingStandard.End();
-            Widgets.EndScrollView();
-
-            // Transfer Buttons
-            Rect transferButtons = contentRect;
-            transferButtons.yMin += (contentRect.height / 2) - 35;
-            transferButtons.yMax -= (contentRect.height / 2) - 50;
-            transferButtons.xMin += (contentRect.width / 2) - 25;
-            transferButtons.xMax -= (contentRect.width / 2) - 25;
-
-            //Rect testBackground = transferButtons;
-            //Widgets.DrawWindowBackground(testBackground);
-
-            listingStandard.Begin(transferButtons);
-            Rect addRect = listingStandard.GetRect(30f); // Height of button
-            Rect space = listingStandard.GetRect(15f);
-            Rect removeRect = listingStandard.GetRect(30f); // Height of button
-            //transferRect.xMin = (transferButtons.width / 2);
-
-            //transferRect = transferRect.LeftPartPixels(rectLeft); // Width of button
-            if (Widgets.ButtonText(addRect, "+")) {
-                lines += 1;
-            }
-
-            Widgets.Label(space, "");
-
-            if (Widgets.ButtonText(removeRect, "-")) {
-                lines -= 1;
-            }
-            listingStandard.End();
-        }
+        [TweakValue("RimAges", -250, 0)]
+        public static float offsetY = 0;
 
         public static void DrawMain(Rect contentRect, RimAgesSettings settings) {
             Listing_Standard listingStandard = new Listing_Standard();
@@ -225,7 +178,7 @@ namespace RimAges {
             listingStandard.End();
         }
 
-        public static void DrawResearch(Rect contentRect, RimAgesSettings settings) {
+        public static void DrawResearchCost(Rect contentRect, RimAgesSettings settings) {
             int normalInc = 100;
             int lockedInc = 0;
 
@@ -280,6 +233,456 @@ namespace RimAges {
             listingStandard.End();
         }
 
+        public static void DrawResearchTab(Rect contentRect, RimAgesSettings settings) {
+            // Initialize filtered def list
+            Dictionary<Def, ResearchProjectDef> leftDefDict = FilterDefs(allDefs);
+
+            Listing_Standard listingStandard = new Listing_Standard();
+
+            // Reset Button
+            Rect resetRect = contentRect;
+            listingStandard.Begin(resetRect);
+            DrawResetButton(resetRect, listingStandard);
+            listingStandard.End();
+
+            // Current Research Button
+            listingStandard.Begin(contentRect);
+
+            Rect currentResearchRect = listingStandard.GetRect(buttonHeight); // Height of button
+            currentResearchRect.xMin = (contentRect.width / 2) - (180/2);
+            
+            currentResearchRect = currentResearchRect.LeftPartPixels(180); // Width of button
+            if (Widgets.ButtonText(currentResearchRect, currentResearch)) {
+                if (!researchDropDownActive) { settings.Write(); researchDropDownActive = true; }
+            }
+
+            // Filter Button
+            Rect filterRect = listingStandard.GetRect(buttonHeight); // Height of button
+            filterRect = filterRect.LeftPartPixels(buttonWidth); // Width of button
+            if (Widgets.ButtonText(filterRect, "Filters")) {
+                if (!filterDropDownActive) { filterDropDownActive = true; }
+            }
+
+            // Search Bar
+            Rect searchRect = filterRect;
+            searchRect.height /= 2;
+            searchRect.y += (buttonHeight / 2);
+            searchRect.x += buttonWidth + 5;
+            searchRect.width = buttonWidth + 75;
+            searchFilter = Widgets.TextField(searchRect, searchFilter);
+
+            // Results
+            Rect resultsRect = searchRect;
+            resultsRect.width = 90;
+            resultsRect.x = searchRect.xMax + 5;
+            TextAnchor anchor = Text.Anchor;
+            Text.Anchor = TextAnchor.UpperRight;
+            Widgets.Label(resultsRect, $"Results: {leftDefDict.Count}");
+            Text.Anchor = anchor;
+            
+
+            // Scroll Rects
+            Rect scrollRect = listingStandard.GetRect(contentRect.height - (buttonHeight * 3) - 20);
+            scrollRect.y += 10;
+            Rect leftScrollRect = scrollRect;
+            leftScrollRect.width = (leftScrollRect.width / 2) - 5;
+            Widgets.DrawWindowBackground(leftScrollRect);
+            Rect leftScrollPosRect = leftScrollRect.ContractedBy(10);
+
+            Rect rightScrollRect = scrollRect;
+            rightScrollRect.width = (rightScrollRect.width / 2) - 5;
+            rightScrollRect.x = (scrollRect.width / 2) + 5;
+            Widgets.DrawWindowBackground(rightScrollRect);
+            Rect rightScrollPosRect = rightScrollRect.ContractedBy(10);
+
+            // Left Scroll
+            int lineHeight = 50;
+            Rect leftDefListRect = new Rect(0, 0, leftScrollPosRect.width - 30, leftDefDict.Count * lineHeight);
+
+            DefScroll leftDefScroll = new DefScroll(leftDefDict, leftDefListRect, leftScrollPosRect, listingStandard, lineHeight);
+            leftDefScroll.DrawDefScroll(ref leftScrollPos);
+
+            // Right Scroll
+            string researchName = currentResearch.Replace(" ", "");
+            Dictionary<Def, ResearchProjectDef> rightDefDict = new Dictionary<Def, ResearchProjectDef>();
+            foreach (Def def in DefDatabase<ResearchProjectDef>.GetNamed($"{researchName}").UnlockedDefs) {
+                rightDefDict.Add(def, DefDatabase<ResearchProjectDef>.GetNamed($"{researchName}"));
+            }
+
+            Rect rightDefListRect = new Rect(0, 0, rightScrollPosRect.width - 30, rightDefDict.Count * lineHeight);
+
+            DefScroll rightDefScroll = new DefScroll(rightDefDict, rightDefListRect, rightScrollPosRect, listingStandard, lineHeight);
+            rightDefScroll.DrawDefScroll(ref rightScrollPos);
+
+            listingStandard.End();
+
+            // Current Research Drop Down
+            if (researchDropDownActive) {
+                float researchDropDownSizeX = 400;
+                float researchDropDownSizeY = 360;
+                Rect researchDropDown = new Rect((Screen.width / 2) - (researchDropDownSizeX / 2), ((Screen.height / 2) - (researchDropDownSizeY / 2))-65, researchDropDownSizeX, researchDropDownSizeY);
+                Find.WindowStack.ImmediateWindow(12, researchDropDown, WindowLayer.Super, () => {
+                    DrawResearchDropDown(researchDropDown, listingStandard);
+                }, true, true, 1, () => { researchDropDownActive = false; });
+            }
+
+            // Filter Drop Down
+            if (filterDropDownActive) {
+                float filterDropDownSizeX = 400;
+                float filterDropDownSizeY = 360;
+                Rect filterDropDown = new Rect((Screen.width / 2) - (filterDropDownSizeX / 2), ((Screen.height / 2) - (filterDropDownSizeY / 2)) - 65, filterDropDownSizeX, filterDropDownSizeY);
+                Find.WindowStack.ImmediateWindow(11, filterDropDown, WindowLayer.Super, () => {
+                    DrawFilterDropDown(filterDropDown, listingStandard);
+                }, true, true, 1, () => { filterDropDownActive = false; });
+            }
+        }
+
+        public static Dictionary<Def, ResearchProjectDef> FilterDefs(List<Def> defList) {
+            List<Def> list = new List<Def>();
+            Dictionary<Def, ResearchProjectDef> defDict = new Dictionary<Def, ResearchProjectDef>();
+            for (int i = 0; i < defList.Count; i++) {
+                Def currentDef = defList[i];
+                Def keyDef = null;
+                ResearchProjectDef valueDef = null;
+                if (assignedDefsFilter) { // any filters == true
+                    if (assignedDefsFilter) {
+                        switch ($"{currentDef.GetType()}") {
+                            case "Verse.TerrainDef":
+                                try {
+                                    if (DefDatabase<TerrainDef>.GetNamed(currentDef.defName).researchPrerequisites.Count == 0) { keyDef = currentDef; }
+                                }
+                                catch (Exception e) {
+                                    Log.Warning($"[RimAges] ERROR: {currentDef.defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.");
+                                }
+                                break;
+                            case "Verse.ThingDef":
+                                if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).category == ThingCategory.Building) {
+                                    try {
+                                        if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).researchPrerequisites.Count == 0) { keyDef = currentDef; }
+                                    }
+                                    catch (Exception e) {
+                                        Log.Warning($"[RimAges] ERROR: {currentDef.defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.");
+                                    }
+                                }
+                                else if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).category == ThingCategory.Plant) {
+                                    try {
+                                        if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).plant.sowResearchPrerequisites.Count == 0) { keyDef = currentDef; }
+                                    }
+                                    catch (Exception e) {
+                                        Log.Warning($"[RimAges] ERROR: {currentDef.defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.");
+                                    }
+                                }
+                                else if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).category == ThingCategory.Item && DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker != null) {
+                                    try {
+                                        if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker.researchPrerequisite == null) { keyDef = currentDef; }
+                                    }
+                                    catch (Exception e) {
+                                        Log.Warning($"[RimAges] ERROR: {defList[i].defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.");
+                                    }
+                                }
+                                break;
+                        }
+                    }
+                }
+                else { // If no filters are enabled
+                    switch ($"{currentDef.GetType()}") {
+                        case "Verse.TerrainDef":
+                            try {
+                                List<ResearchProjectDef> researchList = DefDatabase<TerrainDef>.GetNamed(currentDef.defName).researchPrerequisites;
+                                if (!(researchList.Distinct().Count() > 1)) { 
+                                    keyDef = currentDef;
+                                    if (researchList.Count != 0) {
+                                        valueDef = researchList[0];
+                                    }
+                                }
+                            }
+                            catch (Exception e) {
+                                //Log.Error($"[RimAges] ERROR: {currentDef.defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.\n{e}");
+                            }
+                            break;
+                        case "Verse.ThingDef":
+                            if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).category == ThingCategory.Building && DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker == null) {
+                                try {
+                                    List<ResearchProjectDef> researchList = DefDatabase<ThingDef>.GetNamed(currentDef.defName).researchPrerequisites;
+                                    if (!(researchList.Distinct().Count() > 1)) { 
+                                        keyDef = currentDef;
+                                        if (researchList.Count != 0) {
+                                            valueDef = researchList[0];
+                                        }
+                                    }
+                                }
+                                catch (Exception e) {
+                                    //Log.Error($"[RimAges] ERROR: {currentDef.defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.\n{e}");
+                                }
+                            }
+                            else if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).category == ThingCategory.Plant) {
+                                try {
+                                    List<ResearchProjectDef> researchList = DefDatabase<ThingDef>.GetNamed(currentDef.defName).plant.sowResearchPrerequisites;
+                                    if (!(researchList.Distinct().Count() > 1)) { 
+                                        keyDef = currentDef;
+                                        if (researchList.Count != 0) {
+                                            valueDef = researchList[0];
+                                        }
+                                    }
+                                }
+                                catch (Exception e) {
+                                    //Log.Error($"[RimAges] ERROR: {currentDef.defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.\n{e}");
+                                }
+                            }
+                            else if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker != null) { 
+                                keyDef = currentDef; 
+                                if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker.researchPrerequisite != null) {
+                                    valueDef = DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker.researchPrerequisite;
+                                }
+                            }
+                            break;
+                    }
+                }
+                if (keyDef != null) {
+                    defDict.Add(keyDef, valueDef);
+                }
+            }
+            if (searchFilter != null) { defDict = searchDefs(defDict); }
+            return defDict;
+        }
+
+        // Return searched list of defs
+        public static Dictionary<Def, ResearchProjectDef> searchDefs(Dictionary<Def, ResearchProjectDef> defDict) {
+            // Check if searched term is in def.label def.defName or defs research
+            Dictionary<Def, ResearchProjectDef> searchedDefs = new Dictionary<Def, ResearchProjectDef>();
+            string search = searchFilter.ToLower().Replace(" ", "");
+            string[] searchWords = search.Split(','); // bed, thing
+
+            if (searchWords.Length > 1) {
+                for (int i = 0; i < searchWords.Length; i++) {
+                    search = searchWords[i];
+                    if (i > 0) { 
+                        defDict.Clear(); 
+                        foreach (var item in searchedDefs) { defDict.Add(item.Key, item.Value); }
+                        searchedDefs.Clear(); 
+                    }
+                    if (search == null) { continue; }
+                    
+                    foreach (var item in defDict) {
+                        string label = item.Key.label.ToLower().Replace(" ", "");
+                        string defName = item.Key.defName.ToLower().Replace(" ", "");
+                        string defType = item.Key.GetType().ToString().ToLower().Replace("verse.", "");
+                        string researchName;
+                        if (item.Value != null) { researchName = item.Value.defName.ToLower().Replace(" ", ""); }
+                        else { researchName = "nullnonenotfound"; } // allows terms: null / none / not found
+                        if (label.Contains(search) || defName.Contains(search) || researchName.Contains(search) || defType.Contains(search)) { searchedDefs.Add(item.Key, item.Value); }
+                    }
+                }
+            }
+            else {
+                foreach (var item in defDict) {
+                    string label = item.Key.label.ToLower().Replace(" ", "");
+                    string defName = item.Key.defName.ToLower().Replace(" ", "");
+                    string defType = item.Key.GetType().ToString().ToLower().Replace("verse.", "");
+                    string researchName;
+                    if (item.Value != null) { researchName = item.Value.defName.ToLower().Replace(" ", ""); }
+                    else { researchName = "nullnonenotfound"; } // allows terms: null / none / not found
+                    if (label.Contains(search) || defName.Contains(search) || researchName.Contains(search) || defType.Contains(search)) { searchedDefs.Add(item.Key, item.Value); }
+                }
+            }
+
+
+            return searchedDefs;
+        }
+
+        // Makes a scrollable list of defs
+        public class DefScroll {
+            public Dictionary<Def, ResearchProjectDef> defDict;
+            public Rect defListRect;
+            public Rect scrollPosRect;
+            public Listing_Standard listingStandard;
+            public int lineHeight;
+
+
+            public DefScroll(Dictionary<Def, ResearchProjectDef> _defDict, Rect _defListRect, Rect _scrollPosRect, Listing_Standard _listingStandard, int _lineHeight) {
+                defDict = _defDict;
+                defListRect = _defListRect;
+                scrollPosRect = _scrollPosRect;
+                listingStandard = _listingStandard;
+                lineHeight = _lineHeight;
+            }
+
+            public void DrawDefScroll(ref Vector2 _scrollPos) {
+                Widgets.BeginScrollView(scrollPosRect, ref _scrollPos, defListRect, true);
+                listingStandard.Begin(defListRect);
+                int cellPosition;
+                int lineNumber;
+                lineNumber = cellPosition = 0;
+
+                foreach (var item in defDict) {
+                    cellPosition += lineHeight;
+                    lineNumber++;
+
+                    Rect rect = listingStandard.GetRect(lineHeight);
+                    Widgets.DrawWindowBackground(rect);
+                    if (lineNumber % 2 != 1) { Widgets.DrawLightHighlight(rect); }
+                    Def currentDef = item.Key;
+                    ResearchProjectDef researchDef = item.Value;
+                    DrawListItem(rect, currentDef, researchDef);
+
+                    //Vector2 mousePos = Event.current.mousePosition;
+                    //if ((mousePos.x > rect.xMin && mousePos.x < rect.xMax) && (mousePos.y > rect.yMin && mousePos.y < rect.yMax)) { 
+                    //    Widgets.DrawHighlight(rect); 
+                    //    if (Input.GetMouseButtonDown(0)) {
+                    //        dragging = true;
+                    //    }
+                    //    if (Input.GetMouseButtonUp(0)) {
+                    //        dragging = false;
+                    //    }
+                    //}
+                    //if (dragging) {
+                    //    Rect dragRect = new Rect(mousePos.x, mousePos.y, rect.width, rect.height);
+                    //    DrawListItem(dragRect, currentDef, researchDef);
+                    //}
+                }
+                listingStandard.End();
+                Widgets.EndScrollView();
+            }
+        }
+
+        public static void DrawListItem(Rect rect, Def currentDef, ResearchProjectDef researchDef) {
+            Rect labelItemRect = rect.ContractedBy(5);
+            labelItemRect.height = 22;
+            Widgets.Label(labelItemRect, $"{currentDef.label.CapitalizeFirst()}");
+
+            Text.Font = GameFont.Tiny;
+            Rect defItemRect = labelItemRect;
+            defItemRect.y += 25;
+            Widgets.Label(defItemRect, $"({currentDef.defName})");
+                
+
+            Rect researchItemRect = labelItemRect;
+            TextAnchor anchor = Text.Anchor;
+            Text.Anchor = TextAnchor.UpperRight;
+            if (researchDef != null) {
+                    Widgets.Label(researchItemRect, $"{researchDef}");
+            }
+            else if ($"{currentDef.GetType()}" == "Verse.ThingDef") {
+                if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker != null || DefDatabase<ThingDef>.GetNamed(currentDef.defName).researchPrerequisites != null) {
+                    Widgets.Label(researchItemRect, $"None");
+                }
+                else {
+                    Widgets.Label(researchItemRect, $"Not Found");
+                }
+            }
+            else {
+                Widgets.Label(researchItemRect, $"Not Found");
+            }
+
+            Rect typeItemRect = defItemRect;
+            Text.Anchor = TextAnchor.UpperRight;
+            Widgets.Label(typeItemRect, $"{currentDef.GetType().ToString().Replace("Verse.", "")}");
+            Text.Anchor = anchor;
+            Text.Font = GameFont.Small;
+        }
+
+        public static void DrawResearchDropDown(Rect dropDown, Listing_Standard listingStandard) {
+            Rect dropRect = dropDown.ContractedBy(10f);
+            dropRect.position = new Vector2(10, 10);
+
+            Rect leftRect = dropRect;
+            leftRect.xMax -= (leftRect.width / 2) + 10;
+
+            Rect rightRect = dropRect;
+            rightRect.xMin += (rightRect.width / 2) + 10;
+
+            listingStandard.Begin(leftRect);
+            if (listingStandard.RadioButton("Medieval Age", currentResearch == "Medieval Age")) {
+                currentResearch = "Medieval Age";
+                researchDropDownActive = false;
+            }
+            if (listingStandard.RadioButton("Industrial Age", currentResearch == "Industrial Age")) {
+                currentResearch = "Industrial Age";
+                researchDropDownActive = false;
+            }
+            if (listingStandard.RadioButton("Spacer Age", currentResearch == "Spacer Age")) {
+                currentResearch = "Spacer Age";
+                researchDropDownActive = false;
+            }
+            if (listingStandard.RadioButton("Ultra Age", currentResearch == "Ultra Age")) {
+                currentResearch = "Ultra Age";
+                researchDropDownActive = false;
+            }
+            if (listingStandard.RadioButton("Archotech Age", currentResearch == "Archotech Age")) {
+                currentResearch = "Archotech Age";
+                researchDropDownActive = false;
+            }
+            //TEMP ... REMOVE
+            if (listingStandard.RadioButton("Machining", currentResearch == "Machining")) {
+                currentResearch = "Machining";
+                researchDropDownActive = false;
+            }
+            listingStandard.End();
+
+            listingStandard.Begin(rightRect);
+            if (listingStandard.RadioButton("Medieval Cooking", currentResearch == "Medieval Cooking")) {
+                currentResearch = "Medieval Cooking";
+                researchDropDownActive = false;
+            }
+            if (listingStandard.RadioButton("Medieval Defenses", currentResearch == "Medieval Defenses")) {
+                currentResearch = "Medieval Defenses";
+                researchDropDownActive = false;
+            }
+            if (listingStandard.RadioButton("Medieval Hygiene", currentResearch == "Medieval Hygiene")) {
+                currentResearch = "Medieval Hygiene";
+                researchDropDownActive = false;
+            }
+            if (listingStandard.RadioButton("Medieval Research", currentResearch == "Medieval Research")) {
+                currentResearch = "Medieval Research";
+                researchDropDownActive = false;
+            }
+            if (listingStandard.RadioButton("Training Targets", currentResearch == "Training Targets")) {
+                currentResearch = "Training Targets";
+                researchDropDownActive = false;
+            }
+            if (listingStandard.RadioButton("Spacer Plants", currentResearch == "Spacer Plants")) {
+                currentResearch = "Spacer Plants";
+                researchDropDownActive = false;
+            }
+            listingStandard.End();
+        }
+
+        public static void DrawFilterDropDown(Rect dropDown, Listing_Standard listingStandard) {
+            Rect dropRect = dropDown.ContractedBy(10f);
+            dropRect.position = new Vector2(10, 10);
+
+            listingStandard.Begin(dropRect);
+            listingStandard.CheckboxLabeled("Exclude Assigned Defs", ref assignedDefsFilter);
+            listingStandard.End();
+        }
+
+        public static void DrawResearchFilters(Rect contentRect, RimAgesSettings settings) {
+            Listing_Standard listingStandard = new Listing_Standard();
+            
+            Rect backRect = contentRect;
+            listingStandard.Begin(backRect);
+            Rect space = listingStandard.GetRect(backRect.height - buttonHeight);
+            Widgets.Label(space, "");
+
+            Rect rect = listingStandard.GetRect(buttonHeight); // Height of button
+            rect.xMin = (backRect.width / 2) - (buttonWidth / 2);
+
+            rect = rect.LeftPartPixels(buttonWidth); // Width of button
+            if (Widgets.ButtonText(rect, "Back")) {
+                currentPage = 0;
+            }
+            listingStandard.End();
+
+            bool test = false;
+            listingStandard.Begin(contentRect);
+            listingStandard.Label("Filters");
+            listingStandard.CheckboxLabeled("Include Assigned Defs", ref test, "Test");
+            listingStandard.GapLine();
+            listingStandard.CheckboxLabeled("Placeholder", ref test, "Test");
+            listingStandard.GapLine();
+            listingStandard.End();
+        }
+
         public static void DrawResetButton(Rect contentRect, Listing_Standard listingStandard) {
             if (spaceHeight == -500f) {
                 Rect space = listingStandard.GetRect(contentRect.height - buttonHeight);
@@ -298,12 +701,84 @@ namespace RimAges {
                 rect.xMin = rectMin;
             }
 
-            rect = rect.LeftPartPixels(rectLeft); // Width of button
+            rect = rect.LeftPartPixels(buttonWidth); // Width of button
             if (Widgets.ButtonText(rect, "Reset")) {
                 Log.Warning($"{RimAges.modTag} Pressed!");
-                RimAgesDefaults.RimAgesSettingsReset();
-                lines += 1;
+                TaggedString taggedStringConfirm = "Reset";
+                TaggedString taggedStringCancel = "Cancel";
+                Find.WindowStack.Add(new Dialog_MessageBox("Are you sure you want to reset your settings to default?\n(This only resets settings on the current page.)", taggedStringConfirm, ResetSettings, taggedStringCancel, null, null, true)); // Replace with better wording?
             }
+            void ResetSettings() {
+                RimAgesDefaults.RimAgesSettingsReset();
+                lines = 0;
+            }
+        }
+
+        public static void DrawResearchSelection(Rect contentRect, RimAgesSettings settings) {  // OLD
+            Listing_Standard listingStandard = new Listing_Standard();
+
+            Rect backRect = contentRect;
+            listingStandard.Begin(backRect);
+            Rect space = listingStandard.GetRect(backRect.height - buttonHeight);
+            Widgets.Label(space, "");
+
+            Rect rect = listingStandard.GetRect(buttonHeight); // Height of button
+            rect.xMin = (backRect.width / 2) - (buttonWidth / 2);
+
+            rect = rect.LeftPartPixels(buttonWidth); // Width of button
+            if (Widgets.ButtonText(rect, "Back")) {
+            }
+            listingStandard.End();
+
+            (Vector2 pos, Vector2 size) bounds = (new Vector2(10, 250), new Vector2(contentRect.width, 300));
+            Rect boundsBox = new Rect(bounds.pos, bounds.size);
+            Widgets.DrawWindowBackground(boundsBox);
+
+            Rect dragRect = new Rect(boxPos.x+5, boxPos.y+5, 120, 40);
+            if (Input.GetMouseButtonDown(0)) {
+                Vector2 pos = Event.current.mousePosition;
+                if ((pos.x >= boxPos.x && pos.x <= (boxPos.x + buttonWidth))&&(pos.y >= boxPos.y && pos.y <= (boxPos.y + buttonHeight))) {
+                    dragging = true;
+                }
+            }
+            if (Input.GetMouseButtonUp(0)) {
+                Vector2 pos = Event.current.mousePosition;
+                if (dragging) {
+                    if (!((pos.x >= bounds.pos.x + (buttonWidth / 2) && pos.x <= (bounds.pos.x + bounds.size.x) - (buttonWidth / 2) - 6) && (pos.y >= bounds.pos.y + (buttonHeight / 2) && pos.y <= (bounds.pos.y + bounds.size.y) - (buttonHeight / 2)))) {
+                        float x = pos.x - (buttonWidth/2);
+                        float y = pos.y - (buttonHeight/2);
+                        if (pos.x <= bounds.pos.x + (buttonWidth / 2)) {
+                            x = bounds.pos.x - 4;
+                        }
+                        if (pos.x >= (bounds.pos.x + bounds.size.x) - (buttonWidth / 2) - 6) {
+                            x = ((bounds.pos.x + bounds.size.x) - buttonWidth) - 6;
+                        }
+                        if (pos.y <= bounds.pos.y + (buttonHeight / 2)) {
+                            y = bounds.pos.y - 4;
+                        }
+                        if (pos.y >= (bounds.pos.y + bounds.size.y) - (buttonHeight / 2)) {
+                            y = ((bounds.pos.y + bounds.size.y) - 36); //Button height is incorrect (Current size: 30)
+                        }
+                        boxPos = new Vector2(x, y);
+                    }
+                }
+                dragging = false;
+            }
+            if (dragging) {
+                Vector2 pos = Event.current.mousePosition;
+                boxPos = pos - new Vector2(buttonWidth / 2, buttonHeight / 2);
+            }
+
+            listingStandard.Begin(dragRect);
+            if (listingStandard.ButtonText("Drag Me!")) {
+                if (!dragging) {
+                    Log.Message($"RimAges: Dragging = {dragging}");
+                }
+                else {
+                    Log.Message($"RimAges: Dragging = {dragging}");
+                }
+            }
+            listingStandard.End();
         }
 
         public class RimAgesDefaults {
@@ -324,20 +799,27 @@ namespace RimAges {
 
             public static void RimAgesSettingsReset() {
                 RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
-                settings.noResearch = noResearch;
-                settings.emptyResearch = emptyResearch;
-
-                settings.MedievalAgeCost = MedievalAgeCost;
-                settings.IndustrialAgeCost = IndustrialAgeCost;
-                settings.SpacerAgeCost = SpacerAgeCost;
-                settings.UltraAgeCost = UltraAgeCost;
-                settings.ArchotechAgeCost = ArchotechAgeCost;
-                settings.MedievalCookingCost = MedievalCookingCost;
-                settings.MedievalDefensesCost = MedievalDefensesCost;
-                settings.MedievalHygieneCost = MedievalHygieneCost;
-                settings.MedievalResearchCost = MedievalResearchCost;
-                settings.TrainingTargetsCost = TrainingTargetsCost;
-                settings.SpacerPlantsCost = SpacerPlantsCost;
+                switch (settings.tab) {
+                    case 0:
+                        settings.noResearch = noResearch;
+                        settings.emptyResearch = emptyResearch;
+                        break;
+                    case 1:
+                        settings.MedievalAgeCost = MedievalAgeCost;
+                        settings.IndustrialAgeCost = IndustrialAgeCost;
+                        settings.SpacerAgeCost = SpacerAgeCost;
+                        settings.UltraAgeCost = UltraAgeCost;
+                        settings.ArchotechAgeCost = ArchotechAgeCost;
+                        settings.MedievalCookingCost = MedievalCookingCost;
+                        settings.MedievalDefensesCost = MedievalDefensesCost;
+                        settings.MedievalHygieneCost = MedievalHygieneCost;
+                        settings.MedievalResearchCost = MedievalResearchCost;
+                        settings.TrainingTargetsCost = TrainingTargetsCost;
+                        settings.SpacerPlantsCost = SpacerPlantsCost;
+                        break;
+                    case 2:
+                        break;
+                }
             }
         }
         public static class RimAgesBackup {
