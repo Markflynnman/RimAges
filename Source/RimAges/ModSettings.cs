@@ -8,6 +8,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Diagnostics.Eventing.Reader;
 using Steamworks;
+using Verse.AI;
 
 
 namespace RimAges {
@@ -35,7 +36,8 @@ namespace RimAges {
         public static Vector2 rightScrollPos;
         public static int currentPage = 0;
         public static string currentResearch = "Machining";
-        public static bool dragging = false;
+        public static bool isDragging = false;
+        public static Rect dragging;
         public static Vector2 boxPos = new Vector2(200, 300);
         public static bool researchDropDownActive = false;
         public static bool filterDropDownActive = false;
@@ -239,6 +241,14 @@ namespace RimAges {
 
             Listing_Standard listingStandard = new Listing_Standard();
 
+            // TESTING
+            if (Input.GetMouseButtonDown(0)) {
+                isDragging = true;
+            }
+            if (Input.GetMouseButtonUp(0)) {
+                isDragging = false;
+            }
+
             // Reset Button
             Rect resetRect = contentRect;
             listingStandard.Begin(resetRect);
@@ -313,6 +323,9 @@ namespace RimAges {
 
             DefScroll rightDefScroll = new DefScroll(rightDefDict, rightDefListRect, rightScrollPosRect, listingStandard, lineHeight);
             rightDefScroll.DrawDefScroll(ref rightScrollPos);
+
+            if (Mouse.IsOver(leftScrollRect) && isDragging) { Widgets.DrawHighlight(leftScrollRect); }
+            if (Mouse.IsOver(rightScrollRect) && isDragging) { Widgets.DrawHighlight(rightScrollRect); }
 
             listingStandard.End();
 
@@ -450,12 +463,40 @@ namespace RimAges {
         public static Dictionary<Def, ResearchProjectDef> searchDefs(Dictionary<Def, ResearchProjectDef> defDict) {
             // Check if searched term is in def.label def.defName or defs research
             Dictionary<Def, ResearchProjectDef> searchedDefs = new Dictionary<Def, ResearchProjectDef>();
-            string search = searchFilter.ToLower().Replace(" ", "");
+            string search = searchFilter.ToLower();
             string[] searchWords = search.Split(','); // bed, thing
+            List<string> keywords = new List<string> { "#name", "#def", "#type", "#research", "#mod" };
 
-            if (searchWords.Length > 1) {
-                for (int i = 0; i < searchWords.Length; i++) {
+            if (searchWords.Length > 1) { // Multiple Terms
+                List<string> foundKeywords = new List<string>();
+                foreach (string word in searchWords) { // Check for keywords and add them to a list
+                    string foundKeyword = null;
+                    foreach (string keyword in keywords) {
+                        if (word.Contains(keyword)) { foundKeyword = keyword; }
+                    }
+                    foundKeywords.Add(foundKeyword);
+                }
+                for (int i = 0; i < searchWords.Length; i++) { // check each searched term
                     search = searchWords[i];
+                    search = search.Trim();
+
+                    string modifier = null;
+                    if (search.Length > 0) { // Remove keywords
+                        if (search[0] == '#') {
+                            string[] split = search.Split(' ');
+                            if (split.Length > 1) {
+                                search = "";
+                                for (int n = 0; n < split.Length; n++) {
+                                    if (n != 0) {
+                                        search += split[n];
+                                    }
+                                }
+                            }
+                        }
+                        if (search[0] == '!') { modifier = "!"; search = search.Replace("!", ""); }
+                    }
+                    search = search.Replace(" ", "");
+                    
                     if (i > 0) { 
                         defDict.Clear(); 
                         foreach (var item in searchedDefs) { defDict.Add(item.Key, item.Value); }
@@ -467,26 +508,97 @@ namespace RimAges {
                         string label = item.Key.label.ToLower().Replace(" ", "");
                         string defName = item.Key.defName.ToLower().Replace(" ", "");
                         string defType = item.Key.GetType().ToString().ToLower().Replace("verse.", "");
+                        string modTag = item.Key.modContentPack.ToStringSafe().ToLower().Replace(" ", "");
                         string researchName;
                         if (item.Value != null) { researchName = item.Value.defName.ToLower().Replace(" ", ""); }
                         else { researchName = "nullnonenotfound"; } // allows terms: null / none / not found
-                        if (label.Contains(search) || defName.Contains(search) || researchName.Contains(search) || defType.Contains(search)) { searchedDefs.Add(item.Key, item.Value); }
+                        if (foundKeywords[i] != null) {
+                            switch (foundKeywords[i]) {
+                                case "#name":
+                                    if (modifier == "!") { if (!(label.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
+                                    else { if (label.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
+                                    break;
+                                case "#def":
+                                    if (modifier == "!") { if (!(defName.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
+                                    else { if (defName.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
+                                    break;
+                                case "#type":
+                                    if (modifier == "!") { if (!(defType.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
+                                    else { if (defType.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
+                                    break;
+                                case "#research":
+                                    if (modifier == "!") { if (!(researchName.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
+                                    else { if (researchName.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
+                                    break;
+                                case "#mod":
+                                    if (modifier == "!") { if (!(modTag.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
+                                    else { if (modTag.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
+                                    break;
+                            }
+                        }
+                        else if (modifier == "!") { if (!(label.Contains(search) || defName.Contains(search) || defType.Contains(search) || researchName.Contains(search) || modTag.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
+                        else if (label.Contains(search) || defName.Contains(search) || defType.Contains(search) || researchName.Contains(search) || modTag.Contains(search)) { searchedDefs.Add(item.Key, item.Value); }
                     }
                 }
             }
-            else {
+            else { // Single term
+                search = search.Trim();
+                string foundKeyword = null;
+                string modifier = null;
+                if (search.Length > 0) {
+                    foreach (string keyword in keywords) {
+                        if (search.Contains(keyword)) { foundKeyword = keyword; }
+                    }
+                    if (search[0] == '#') {
+                        string[] split = search.Split(' ');
+                        if (split.Length > 1) {
+                            search = "";
+                            for (int i = 0; i < split.Length; i++) {
+                                if (i != 0) {
+                                    search += split[i];
+                                }
+                            }
+                        }
+                    }
+                    if (search[0] == '!') { modifier = "!"; search = search.Replace("!", ""); }
+                }
+                search = search.Replace(" ", "");
                 foreach (var item in defDict) {
                     string label = item.Key.label.ToLower().Replace(" ", "");
                     string defName = item.Key.defName.ToLower().Replace(" ", "");
                     string defType = item.Key.GetType().ToString().ToLower().Replace("verse.", "");
+                    string modTag = item.Key.modContentPack.ToStringSafe().ToLower().Replace(" ", "");
                     string researchName;
                     if (item.Value != null) { researchName = item.Value.defName.ToLower().Replace(" ", ""); }
                     else { researchName = "nullnonenotfound"; } // allows terms: null / none / not found
-                    if (label.Contains(search) || defName.Contains(search) || researchName.Contains(search) || defType.Contains(search)) { searchedDefs.Add(item.Key, item.Value); }
+                    if (foundKeyword != null) {
+                        switch (foundKeyword) {
+                            case "#name":
+                                if (modifier == "!") { if (!(label.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
+                                else { if (label.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
+                                break;
+                            case "#def":
+                                if (modifier == "!") { if (!(defName.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
+                                else { if (defName.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
+                                break;
+                            case "#type":
+                                if (modifier == "!") { if (!(defType.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
+                                else { if (defType.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
+                                break;
+                            case "#research":
+                                if (modifier == "!") { if (!(researchName.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
+                                else { if (researchName.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
+                                break;
+                            case "#mod":
+                                if (modifier == "!") { if (!(modTag.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
+                                else { if (modTag.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
+                                break;
+                        }
+                    }
+                    else if (modifier == "!") { if (!(label.Contains(search) || defName.Contains(search) || defType.Contains(search) || researchName.Contains(search) || modTag.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
+                    else if (label.Contains(search) || defName.Contains(search) || defType.Contains(search) || researchName.Contains(search) || modTag.Contains(search)) { searchedDefs.Add(item.Key, item.Value); }
                 }
             }
-
-
             return searchedDefs;
         }
 
@@ -525,6 +637,8 @@ namespace RimAges {
                     ResearchProjectDef researchDef = item.Value;
                     DrawListItem(rect, currentDef, researchDef);
 
+                    if (Mouse.IsOver(rect)) { }
+
                     //Vector2 mousePos = Event.current.mousePosition;
                     //if ((mousePos.x > rect.xMin && mousePos.x < rect.xMax) && (mousePos.y > rect.yMin && mousePos.y < rect.yMax)) { 
                     //    Widgets.DrawHighlight(rect); 
@@ -550,10 +664,12 @@ namespace RimAges {
             labelItemRect.height = 22;
             Widgets.Label(labelItemRect, $"{currentDef.label.CapitalizeFirst()}");
 
+            string mod = currentDef.modContentPack.ToStringSafe();
+
             Text.Font = GameFont.Tiny;
             Rect defItemRect = labelItemRect;
             defItemRect.y += 25;
-            Widgets.Label(defItemRect, $"({currentDef.defName})");
+            Widgets.Label(defItemRect, $"[{mod}]");
                 
 
             Rect researchItemRect = labelItemRect;
@@ -738,12 +854,12 @@ namespace RimAges {
             if (Input.GetMouseButtonDown(0)) {
                 Vector2 pos = Event.current.mousePosition;
                 if ((pos.x >= boxPos.x && pos.x <= (boxPos.x + buttonWidth))&&(pos.y >= boxPos.y && pos.y <= (boxPos.y + buttonHeight))) {
-                    dragging = true;
+                    isDragging = true;
                 }
             }
             if (Input.GetMouseButtonUp(0)) {
                 Vector2 pos = Event.current.mousePosition;
-                if (dragging) {
+                if (isDragging) {
                     if (!((pos.x >= bounds.pos.x + (buttonWidth / 2) && pos.x <= (bounds.pos.x + bounds.size.x) - (buttonWidth / 2) - 6) && (pos.y >= bounds.pos.y + (buttonHeight / 2) && pos.y <= (bounds.pos.y + bounds.size.y) - (buttonHeight / 2)))) {
                         float x = pos.x - (buttonWidth/2);
                         float y = pos.y - (buttonHeight/2);
@@ -762,20 +878,20 @@ namespace RimAges {
                         boxPos = new Vector2(x, y);
                     }
                 }
-                dragging = false;
+                isDragging = false;
             }
-            if (dragging) {
+            if (isDragging) {
                 Vector2 pos = Event.current.mousePosition;
                 boxPos = pos - new Vector2(buttonWidth / 2, buttonHeight / 2);
             }
 
             listingStandard.Begin(dragRect);
             if (listingStandard.ButtonText("Drag Me!")) {
-                if (!dragging) {
-                    Log.Message($"RimAges: Dragging = {dragging}");
+                if (!isDragging) {
+                    Log.Message($"RimAges: Dragging = {isDragging}");
                 }
                 else {
-                    Log.Message($"RimAges: Dragging = {dragging}");
+                    Log.Message($"RimAges: Dragging = {isDragging}");
                 }
             }
             listingStandard.End();
