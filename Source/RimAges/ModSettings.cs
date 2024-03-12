@@ -308,7 +308,11 @@ namespace RimAges {
             // Add/Remove defs from dicts
             Vector2 mousePos = Event.current.mousePosition;
             if ((mousePos.x > leftScrollRect.xMin && mousePos.x < leftScrollRect.xMax) && (mousePos.y > leftScrollRect.yMin && mousePos.y < leftScrollRect.yMax)) {
-                Widgets.DrawHighlight(leftScrollRect);
+                if (isDragging) {
+                    // TODO Make highlight draw over all scroll items
+                    Rect leftHighlight = leftScrollRect;
+                    Widgets.DrawHighlight(leftHighlight);
+                }
                 if (Input.GetMouseButtonUp(0) && isDragging) { isDragging = false; if (dragging != (null, null, new Vector2(0, 0))) {
                         if (!leftDefDict.ContainsKey(dragging.Item1)) {
                             leftDefDict.Add(dragging.Item1, dragging.Item2);
@@ -320,7 +324,11 @@ namespace RimAges {
                 }
             }
             if ((mousePos.x > rightScrollRect.xMin && mousePos.x < rightScrollRect.xMax) && (mousePos.y > rightScrollRect.yMin && mousePos.y < rightScrollRect.yMax)) {
-                Widgets.DrawHighlight(rightScrollRect);
+                if (isDragging) {
+                    // TODO Make highlight draw over all scroll items
+                    Rect rightHighlight = rightScrollRect;
+                    Widgets.DrawHighlight(rightHighlight);
+                }
                 if (Input.GetMouseButtonUp(0) && isDragging) { isDragging = false; if (dragging != (null, null, new Vector2(0, 0))) {
                         if (!rightDefDict.ContainsKey(dragging.Item1)) {
                             rightDefDict.Add(dragging.Item1, dragging.Item2);
@@ -331,6 +339,7 @@ namespace RimAges {
                     } 
                 }
             }
+
             // Reset dragging
             if (Input.GetMouseButtonUp(0) && isDragging) { isDragging = false; if (dragging != (null, null, new Vector2(0, 0))) { dragging = (null, null, new Vector2(0, 0)); } }
 
@@ -346,7 +355,6 @@ namespace RimAges {
 
             DefScroll rightDefScroll = new DefScroll(rightDefListRect, rightScrollPosRect, listingStandard, lineHeight);
             rightDefScroll.DrawDefScroll(ref rightScrollPos, rightDefDict);
-
 
             listingStandard.End();
 
@@ -738,7 +746,9 @@ namespace RimAges {
                     ResearchProjectDef researchDef = item.Value;
                     DrawListItem(rect, currentDef, researchDef);
 
-                    if (Mouse.IsOver(rect)) { if (Input.GetMouseButtonDown(0) && isDragging == false) { dragging = (currentDef, researchDef, rect.size); isDragging = true; } }
+                    if (Mouse.IsOver(rect)) {
+                        if (isDragging == false) { Widgets.DrawLightHighlight(rect); }
+                        if (Input.GetMouseButtonDown(0) && isDragging == false) { dragging = (currentDef, researchDef, rect.size); isDragging = true; } }
 
                 }
                 listingStandard.End();
