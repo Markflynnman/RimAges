@@ -37,12 +37,15 @@ namespace RimAges {
         public static int currentPage = 0;
         public static string currentResearch = "Machining";
         public static bool isDragging = false;
-        public static Rect dragging;
+        public static (Def, ResearchProjectDef, Vector2) dragging;
         public static Vector2 boxPos = new Vector2(200, 300);
         public static bool researchDropDownActive = false;
         public static bool filterDropDownActive = false;
         public static bool assignedDefsFilter = false;
         public static string searchFilter;
+
+        public static Dictionary<Def, ResearchProjectDef> leftDefDict = new Dictionary<Def, ResearchProjectDef>();
+        public static Dictionary<Def, ResearchProjectDef> rightDefDict = new Dictionary<Def, ResearchProjectDef>();
 
         public override void ExposeData() {
             Scribe_Values.Look(ref noResearch, "noResearch", true);
@@ -113,6 +116,9 @@ namespace RimAges {
                     settings.tab = 2;
                     currentPage = 0;
                     settings.Write();
+                    // Initialize def dicts
+                    leftDefDict = UpdateDefDict(null);
+                    rightDefDict = UpdateDefDict(currentResearch);
                 }, settings.tab == 2),
                 new TabRecord("Drag & Drop", delegate {
                     settings.tab = 3;
@@ -236,18 +242,9 @@ namespace RimAges {
         }
 
         public static void DrawResearchTab(Rect contentRect, RimAgesSettings settings) {
-            // Initialize filtered def list
-            Dictionary<Def, ResearchProjectDef> leftDefDict = FilterDefs(allDefs);
-
             Listing_Standard listingStandard = new Listing_Standard();
 
-            // TESTING
-            if (Input.GetMouseButtonDown(0)) {
-                isDragging = true;
-            }
-            if (Input.GetMouseButtonUp(0)) {
-                isDragging = false;
-            }
+            if (isDragging) { RimAges_Utility.Drag(dragging); }
 
             // Reset Button
             Rect resetRect = contentRect;
@@ -281,15 +278,18 @@ namespace RimAges {
             searchRect.width = buttonWidth + 75;
             searchFilter = Widgets.TextField(searchRect, searchFilter);
 
+            // Filter Left Def Dict
+            List<Def> leftDefList = leftDefDict.Keys.ToList();
+            Dictionary<Def, ResearchProjectDef> filteredLeftDefDict = FilterDefs(leftDefList);
+
             // Results
             Rect resultsRect = searchRect;
             resultsRect.width = 90;
             resultsRect.x = searchRect.xMax + 5;
             TextAnchor anchor = Text.Anchor;
             Text.Anchor = TextAnchor.UpperRight;
-            Widgets.Label(resultsRect, $"Results: {leftDefDict.Count}");
+            Widgets.Label(resultsRect, $"Results: {filteredLeftDefDict.Count}");
             Text.Anchor = anchor;
-            
 
             // Scroll Rects
             Rect scrollRect = listingStandard.GetRect(contentRect.height - (buttonHeight * 3) - 20);
@@ -305,27 +305,48 @@ namespace RimAges {
             Widgets.DrawWindowBackground(rightScrollRect);
             Rect rightScrollPosRect = rightScrollRect.ContractedBy(10);
 
+            // Add/Remove defs from dicts
+            Vector2 mousePos = Event.current.mousePosition;
+            if ((mousePos.x > leftScrollRect.xMin && mousePos.x < leftScrollRect.xMax) && (mousePos.y > leftScrollRect.yMin && mousePos.y < leftScrollRect.yMax)) {
+                Widgets.DrawHighlight(leftScrollRect);
+                if (Input.GetMouseButtonUp(0) && isDragging) { isDragging = false; if (dragging != (null, null, new Vector2(0, 0))) {
+                        if (!leftDefDict.ContainsKey(dragging.Item1)) {
+                            leftDefDict.Add(dragging.Item1, dragging.Item2);
+                        }
+                        if (rightDefDict.ContainsKey(dragging.Item1)) {
+                            rightDefDict.Remove(dragging.Item1);
+                        }
+                    } 
+                }
+            }
+            if ((mousePos.x > rightScrollRect.xMin && mousePos.x < rightScrollRect.xMax) && (mousePos.y > rightScrollRect.yMin && mousePos.y < rightScrollRect.yMax)) {
+                Widgets.DrawHighlight(rightScrollRect);
+                if (Input.GetMouseButtonUp(0) && isDragging) { isDragging = false; if (dragging != (null, null, new Vector2(0, 0))) {
+                        if (!rightDefDict.ContainsKey(dragging.Item1)) {
+                            rightDefDict.Add(dragging.Item1, dragging.Item2);
+                            if (leftDefDict.ContainsKey(dragging.Item1)) {
+                                leftDefDict.Remove(dragging.Item1);
+                            }
+                        }
+                    } 
+                }
+            }
+            // Reset dragging
+            if (Input.GetMouseButtonUp(0) && isDragging) { isDragging = false; if (dragging != (null, null, new Vector2(0, 0))) { dragging = (null, null, new Vector2(0, 0)); } }
+
             // Left Scroll
             int lineHeight = 50;
-            Rect leftDefListRect = new Rect(0, 0, leftScrollPosRect.width - 30, leftDefDict.Count * lineHeight);
+            Rect leftDefListRect = new Rect(0, 0, leftScrollPosRect.width - 30, filteredLeftDefDict.Count * lineHeight);
 
-            DefScroll leftDefScroll = new DefScroll(leftDefDict, leftDefListRect, leftScrollPosRect, listingStandard, lineHeight);
-            leftDefScroll.DrawDefScroll(ref leftScrollPos);
+            DefScroll leftDefScroll = new DefScroll(leftDefListRect, leftScrollPosRect, listingStandard, lineHeight);
+            leftDefScroll.DrawDefScroll(ref leftScrollPos, filteredLeftDefDict);
 
             // Right Scroll
-            string researchName = currentResearch.Replace(" ", "");
-            Dictionary<Def, ResearchProjectDef> rightDefDict = new Dictionary<Def, ResearchProjectDef>();
-            foreach (Def def in DefDatabase<ResearchProjectDef>.GetNamed($"{researchName}").UnlockedDefs) {
-                rightDefDict.Add(def, DefDatabase<ResearchProjectDef>.GetNamed($"{researchName}"));
-            }
-
             Rect rightDefListRect = new Rect(0, 0, rightScrollPosRect.width - 30, rightDefDict.Count * lineHeight);
 
-            DefScroll rightDefScroll = new DefScroll(rightDefDict, rightDefListRect, rightScrollPosRect, listingStandard, lineHeight);
-            rightDefScroll.DrawDefScroll(ref rightScrollPos);
+            DefScroll rightDefScroll = new DefScroll(rightDefListRect, rightScrollPosRect, listingStandard, lineHeight);
+            rightDefScroll.DrawDefScroll(ref rightScrollPos, rightDefDict);
 
-            if (Mouse.IsOver(leftScrollRect) && isDragging) { Widgets.DrawHighlight(leftScrollRect); }
-            if (Mouse.IsOver(rightScrollRect) && isDragging) { Widgets.DrawHighlight(rightScrollRect); }
 
             listingStandard.End();
 
@@ -350,8 +371,88 @@ namespace RimAges {
             }
         }
 
+        public static Dictionary<Def, ResearchProjectDef> UpdateDefDict(string researchName) {
+            Dictionary<Def, ResearchProjectDef> defDict = new Dictionary<Def, ResearchProjectDef>();
+            if (researchName == null) {
+                List<Def> defList = allDefs;
+                for (int i = 0; i < defList.Count; i++) {
+                    Def currentDef = defList[i];
+                    Def keyDef = null;
+                    ResearchProjectDef valueDef = null;
+                    switch ($"{currentDef.GetType()}") {
+                        case "Verse.TerrainDef":
+                            try {
+                                List<ResearchProjectDef> researchList = DefDatabase<TerrainDef>.GetNamed(currentDef.defName).researchPrerequisites;
+                                if (!(researchList.Distinct().Count() > 1)) {
+                                    keyDef = currentDef;
+                                    if (researchList.Count != 0) {
+                                        valueDef = researchList[0];
+                                    }
+                                }
+                            }
+                            catch (Exception) {
+                                //Log.Error($"[RimAges] ERROR: {currentDef.defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.\n{e}");
+                            }
+                            break;
+                        case "Verse.ThingDef":
+                            if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).category == ThingCategory.Building && DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker == null) {
+                                try {
+                                    List<ResearchProjectDef> researchList = DefDatabase<ThingDef>.GetNamed(currentDef.defName).researchPrerequisites;
+                                    if (!(researchList.Distinct().Count() > 1)) {
+                                        keyDef = currentDef;
+                                        if (researchList.Count != 0) {
+                                            valueDef = researchList[0];
+                                        }
+                                    }
+                                }
+                                catch (Exception) {
+                                    //Log.Error($"[RimAges] ERROR: {currentDef.defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.\n{e}");
+                                }
+                            }
+                            else if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).category == ThingCategory.Plant) {
+                                try {
+                                    List<ResearchProjectDef> researchList = DefDatabase<ThingDef>.GetNamed(currentDef.defName).plant.sowResearchPrerequisites;
+                                    if (!(researchList.Distinct().Count() > 1)) {
+                                        keyDef = currentDef;
+                                        if (researchList.Count != 0) {
+                                            valueDef = researchList[0];
+                                        }
+                                    }
+                                }
+                                catch (Exception) {
+                                    //Log.Error($"[RimAges] ERROR: {currentDef.defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.\n{e}");
+                                }
+                            }
+                            else if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker != null) {
+                                keyDef = currentDef;
+                                if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker.researchPrerequisite != null) {
+                                    valueDef = DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker.researchPrerequisite;
+                                }
+                            }
+                            break;
+                    }
+                    if (keyDef != null) {
+                        defDict.Add(keyDef, valueDef);
+                    }
+                }
+            }
+            else {
+                researchName = currentResearch.Replace(" ", "");
+                foreach (Def def in DefDatabase<ResearchProjectDef>.GetNamed($"{researchName}").UnlockedDefs) {
+                    defDict.Add(def, DefDatabase<ResearchProjectDef>.GetNamed($"{researchName}"));
+                    if (isDragging) {
+                        if (dragging != (null, null, new Vector2(0, 0))) {
+                            if (!(defDict.ContainsKey(dragging.Item1))) {
+                                defDict.Add(dragging.Item1, dragging.Item2);
+                            }
+                        }
+                    }
+                }
+            }
+            return defDict;
+        }
+
         public static Dictionary<Def, ResearchProjectDef> FilterDefs(List<Def> defList) {
-            List<Def> list = new List<Def>();
             Dictionary<Def, ResearchProjectDef> defDict = new Dictionary<Def, ResearchProjectDef>();
             for (int i = 0; i < defList.Count; i++) {
                 Def currentDef = defList[i];
@@ -611,15 +712,15 @@ namespace RimAges {
             public int lineHeight;
 
 
-            public DefScroll(Dictionary<Def, ResearchProjectDef> _defDict, Rect _defListRect, Rect _scrollPosRect, Listing_Standard _listingStandard, int _lineHeight) {
-                defDict = _defDict;
+            public DefScroll(Rect _defListRect, Rect _scrollPosRect, Listing_Standard _listingStandard, int _lineHeight) {
                 defListRect = _defListRect;
                 scrollPosRect = _scrollPosRect;
                 listingStandard = _listingStandard;
                 lineHeight = _lineHeight;
             }
 
-            public void DrawDefScroll(ref Vector2 _scrollPos) {
+            public void DrawDefScroll(ref Vector2 _scrollPos, Dictionary<Def, ResearchProjectDef> _defDict) {
+                defDict = _defDict;
                 Widgets.BeginScrollView(scrollPosRect, ref _scrollPos, defListRect, true);
                 listingStandard.Begin(defListRect);
                 int cellPosition;
@@ -637,22 +738,8 @@ namespace RimAges {
                     ResearchProjectDef researchDef = item.Value;
                     DrawListItem(rect, currentDef, researchDef);
 
-                    if (Mouse.IsOver(rect)) { }
+                    if (Mouse.IsOver(rect)) { if (Input.GetMouseButtonDown(0) && isDragging == false) { dragging = (currentDef, researchDef, rect.size); isDragging = true; } }
 
-                    //Vector2 mousePos = Event.current.mousePosition;
-                    //if ((mousePos.x > rect.xMin && mousePos.x < rect.xMax) && (mousePos.y > rect.yMin && mousePos.y < rect.yMax)) { 
-                    //    Widgets.DrawHighlight(rect); 
-                    //    if (Input.GetMouseButtonDown(0)) {
-                    //        dragging = true;
-                    //    }
-                    //    if (Input.GetMouseButtonUp(0)) {
-                    //        dragging = false;
-                    //    }
-                    //}
-                    //if (dragging) {
-                    //    Rect dragRect = new Rect(mousePos.x, mousePos.y, rect.width, rect.height);
-                    //    DrawListItem(dragRect, currentDef, researchDef);
-                    //}
                 }
                 listingStandard.End();
                 Widgets.EndScrollView();
@@ -761,6 +848,9 @@ namespace RimAges {
                 researchDropDownActive = false;
             }
             listingStandard.End();
+
+            leftDefDict = UpdateDefDict(null);
+            rightDefDict = UpdateDefDict(currentResearch);
         }
 
         public static void DrawFilterDropDown(Rect dropDown, Listing_Standard listingStandard) {

@@ -325,6 +325,8 @@ namespace RimAges {
 
         public static void UpdateResearch() {
             Log.Message($"{modTag} - TODO: ADD SYSTEM TO UPDATE RESEARCH");
+            RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
+            //DefDatabase<ResearchProjectDef>.GetNamed(settings.
         }
 
         // Currently not used
