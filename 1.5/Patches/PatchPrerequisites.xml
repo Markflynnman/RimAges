@@ -1,0 +1,58 @@
+<?xml version="1.0" ?>
+<Patch>
+    <Operation Class="PatchOperationSequence">
+        <operations>
+            <li Class="PatchOperationAdd">
+                <xpath>Defs[ResearchProjectDef]/ResearchProjectDef[not(prerequisites)]</xpath>
+                <value>
+                    <prerequisites>
+                    </prerequisites>
+                </value>
+            </li>
+			<li Class="PatchOperationAdd">
+                <xpath>Defs[ThingDef]/ThingDef[not(researchPrerequisites) and (building or category = "Building")]</xpath>
+                <value>
+                    <researchPrerequisites>
+                    </researchPrerequisites>
+                </value>
+            </li>
+            <li Class="PatchOperationAdd">
+                <xpath>Defs[ThingDef]/ThingDef/plant[not(sowResearchPrerequisites)]</xpath>
+                <value>
+                    <sowResearchPrerequisites>
+                    </sowResearchPrerequisites>
+                </value>
+            </li>
+            <li Class="PatchOperationAdd">
+                <xpath>Defs[TerrainDef]/TerrainDef[not(researchPrerequisites)]</xpath>
+                <value>
+                    <researchPrerequisites>
+                    </researchPrerequisites>
+                </value>
+            </li>
+			<li Class="PatchOperationAdd">
+                <xpath>Defs[RecipeDef]/RecipeDef[not(researchPrerequisite)]</xpath>
+                <value>
+                    <researchPrerequisite></researchPrerequisite>
+                </value>
+            </li>
+			
+			<!-- Fix Tribal Headdress 
+			<li Class="PatchOperationRemove">
+                <xpath>Defs[ThingDef]/ThingDef[defName="Apparel_TribalHeaddress"]/recipeMaker/researchPrerequisite</xpath>
+			</li>
+				
+			<li Class="PatchOperationAdd">
+                <xpath>Defs[ThingDef]/ThingDef/recipeMaker[not(researchPrerequisite)]</xpath>
+                <value>
+                    <researchPrerequisite></researchPrerequisite>
+                </value>
+            </li>
+			-->
+        </operations>
+    </Operation>
+</Patch>
+
+<!-- Defs[ThingDef]/ThingDef[not(researchPrerequisites) and building]
+Defs[ThingDef]/ThingDef[not(researchPrerequisites) and category = "Building"] 
+TerrainDef-->
