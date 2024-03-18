@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+	
+	<!-- <ResearchTabDef>
+		<defName>NeolithicAge</defName>
+		<label>Neolithic Age</label>
+	</ResearchTabDef> -->
+	<ResearchTabDef>
+		<defName>MedievalAge</defName>
+		<label>Medieval Age</label>
+	</ResearchTabDef>
+	<ResearchTabDef>
+		<defName>IndustrialAge</defName>
+		<label>Industrial Age</label>
+	</ResearchTabDef>
+	<ResearchTabDef>
+		<defName>SpacerAge</defName>
+		<label>Spacer Age</label>
+	</ResearchTabDef>
+	<ResearchTabDef>
+		<defName>UltraAge</defName>
+		<label>Ultra Age</label>
+	</ResearchTabDef>
+	<ResearchTabDef>
+		<defName>ArchotechAge</defName>
+		<label>Archotech Age</label>
+	</ResearchTabDef>
+
+</Defs>
