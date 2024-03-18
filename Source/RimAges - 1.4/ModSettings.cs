@@ -1,14 +1,14 @@
 ﻿using RimWorld;
-using System.Collections.Generic;
 using System;
-using UnityEngine;
-using Verse;
-using static RimAges.RimAgesSettings;
+using System.Collections.Generic;
+using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using System.Security.Cryptography;
-using System.Diagnostics.Eventing.Reader;
+using UnityEngine;
+using Verse;
 using Verse.AI;
-using LudeonTK;
+using static RimAges.RimAgesSettings;
+
 
 namespace RimAges {
     public class RimAgesSettings : ModSettings {
@@ -29,7 +29,7 @@ namespace RimAges {
         public int TrainingTargetsCost;
         public int SpacerPlantsCost;
         public Dictionary<string, int> ResearchCostBackup = new Dictionary<string, int>();
-        
+
 
         public static Vector2 leftScrollPos;
         public static Vector2 rightScrollPos;
@@ -265,8 +265,8 @@ namespace RimAges {
             listingStandard.Begin(contentRect);
 
             Rect currentResearchRect = listingStandard.GetRect(buttonHeight); // Height of button
-            currentResearchRect.xMin = (contentRect.width / 2) - (180/2);
-            
+            currentResearchRect.xMin = (contentRect.width / 2) - (180 / 2);
+
             currentResearchRect = currentResearchRect.LeftPartPixels(180); // Width of button
             if (Widgets.ButtonText(currentResearchRect, currentResearch)) {
                 if (!researchDropDownActive) { settings.Write(); researchDropDownActive = true; }
@@ -322,14 +322,15 @@ namespace RimAges {
                     Rect leftHighlight = leftScrollRect;
                     Widgets.DrawHighlight(leftHighlight);
                 }
-                if (Input.GetMouseButtonUp(0) && isDragging) { isDragging = false; if (dragging != (null, null, new Vector2(0, 0))) {
+                if (Input.GetMouseButtonUp(0) && isDragging) {
+                    isDragging = false; if (dragging != (null, null, new Vector2(0, 0))) {
                         if (!leftDefDict.ContainsKey(dragging.Item1)) {
                             leftDefDict.Add(dragging.Item1, dragging.Item2);
                         }
                         if (rightDefDict.ContainsKey(dragging.Item1)) {
                             rightDefDict.Remove(dragging.Item1);
                         }
-                    } 
+                    }
                 }
             }
             if ((mousePos.x > rightScrollRect.xMin && mousePos.x < rightScrollRect.xMax) && (mousePos.y > rightScrollRect.yMin && mousePos.y < rightScrollRect.yMax)) {
@@ -338,14 +339,15 @@ namespace RimAges {
                     Rect rightHighlight = rightScrollRect;
                     Widgets.DrawHighlight(rightHighlight);
                 }
-                if (Input.GetMouseButtonUp(0) && isDragging) { isDragging = false; if (dragging != (null, null, new Vector2(0, 0))) {
+                if (Input.GetMouseButtonUp(0) && isDragging) {
+                    isDragging = false; if (dragging != (null, null, new Vector2(0, 0))) {
                         if (!rightDefDict.ContainsKey(dragging.Item1)) {
                             rightDefDict.Add(dragging.Item1, dragging.Item2);
                             if (leftDefDict.ContainsKey(dragging.Item1)) {
                                 leftDefDict.Remove(dragging.Item1);
                             }
                         }
-                    } 
+                    }
                 }
             }
 
@@ -371,7 +373,7 @@ namespace RimAges {
             if (researchDropDownActive) {
                 float researchDropDownSizeX = 400;
                 float researchDropDownSizeY = 360;
-                Rect researchDropDown = new Rect((Screen.width / 2) - (researchDropDownSizeX / 2), ((Screen.height / 2) - (researchDropDownSizeY / 2))-65, researchDropDownSizeX, researchDropDownSizeY);
+                Rect researchDropDown = new Rect((Screen.width / 2) - (researchDropDownSizeX / 2), ((Screen.height / 2) - (researchDropDownSizeY / 2)) - 65, researchDropDownSizeX, researchDropDownSizeY);
                 Find.WindowStack.ImmediateWindow(12, researchDropDown, WindowLayer.Super, () => {
                     DrawResearchDropDown(researchDropDown, listingStandard);
                 }, true, true, 1, () => { researchDropDownActive = false; });
@@ -397,7 +399,7 @@ namespace RimAges {
                     Def keyDef = null;
                     ResearchProjectDef valueDef;
                     bool valid;
-                    (valueDef, valid)  = GetResearchProjectDef(currentDef);
+                    (valueDef, valid) = GetResearchProjectDef(currentDef);
                     if (valid) { // True if current def has a researchPrerequisite(s) tag
                         keyDef = currentDef;
                     }
@@ -481,8 +483,8 @@ namespace RimAges {
                     }
                     break;
                 case "Verse.RecipeDef":
-                    if (DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite != null) { 
-                        return (DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite, true) ;
+                    if (DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite != null) {
+                        return (DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite, true);
                     }
                     break;
 #pragma warning restore 0168
@@ -503,7 +505,8 @@ namespace RimAges {
                             case "Verse.TerrainDef":
                                 try {
                                     if (DefDatabase<TerrainDef>.GetNamed(currentDef.defName).researchPrerequisites.Count == 0) { keyDef = currentDef; }
-                                }                                catch (Exception e) {
+                                }
+                                catch (Exception e) {
                                     Log.Warning($"[RimAges] ERROR: {currentDef.defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.");
                                 }
                                 break;
@@ -551,7 +554,7 @@ namespace RimAges {
                         case "Verse.TerrainDef":
                             try {
                                 List<ResearchProjectDef> researchList = DefDatabase<TerrainDef>.GetNamed(currentDef.defName).researchPrerequisites;
-                                if (!(researchList.Distinct().Count() > 1)) { 
+                                if (!(researchList.Distinct().Count() > 1)) {
                                     keyDef = currentDef;
                                     if (researchList.Count != 0) {
                                         valueDef = researchList[0];
@@ -566,7 +569,7 @@ namespace RimAges {
                             if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).category == ThingCategory.Building && DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker == null) {
                                 try {
                                     List<ResearchProjectDef> researchList = DefDatabase<ThingDef>.GetNamed(currentDef.defName).researchPrerequisites;
-                                    if (!(researchList.Distinct().Count() > 1)) { 
+                                    if (!(researchList.Distinct().Count() > 1)) {
                                         keyDef = currentDef;
                                         if (researchList.Count != 0) {
                                             valueDef = researchList[0];
@@ -580,7 +583,7 @@ namespace RimAges {
                             else if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).category == ThingCategory.Plant) {
                                 try {
                                     List<ResearchProjectDef> researchList = DefDatabase<ThingDef>.GetNamed(currentDef.defName).plant.sowResearchPrerequisites;
-                                    if (!(researchList.Distinct().Count() > 1)) { 
+                                    if (!(researchList.Distinct().Count() > 1)) {
                                         keyDef = currentDef;
                                         if (researchList.Count != 0) {
                                             valueDef = researchList[0];
@@ -591,8 +594,8 @@ namespace RimAges {
                                     //Log.Error($"[RimAges] ERROR: {currentDef.defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.\n{e}");
                                 }
                             }
-                            else if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker != null) { 
-                                keyDef = currentDef; 
+                            else if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker != null) {
+                                keyDef = currentDef;
                                 if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker.researchPrerequisite != null) {
                                     valueDef = DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker.researchPrerequisite;
                                 }
@@ -655,14 +658,14 @@ namespace RimAges {
                         if (search[0] == '!') { modifier = "!"; search = search.Replace("!", ""); }
                     }
                     search = search.Replace(" ", "");
-                    
-                    if (i > 0) { 
-                        defDict.Clear(); 
+
+                    if (i > 0) {
+                        defDict.Clear();
                         foreach (var item in searchedDefs) { defDict.Add(item.Key, item.Value); }
-                        searchedDefs.Clear(); 
+                        searchedDefs.Clear();
                     }
                     if (search == null) { continue; }
-                    
+
                     foreach (var item in defDict) {
                         string label = item.Key.label.ToLower().Replace(" ", "");
                         string defName = item.Key.defName.ToLower().Replace(" ", "");
@@ -798,7 +801,8 @@ namespace RimAges {
 
                     if (Mouse.IsOver(rect)) {
                         if (isDragging == false) { Widgets.DrawLightHighlight(rect); }
-                        if (Input.GetMouseButtonDown(0) && isDragging == false) { dragging = (currentDef, researchDef, rect.size); isDragging = true; } }
+                        if (Input.GetMouseButtonDown(0) && isDragging == false) { dragging = (currentDef, researchDef, rect.size); isDragging = true; }
+                    }
 
                 }
                 listingStandard.End();
@@ -817,13 +821,13 @@ namespace RimAges {
             Rect defItemRect = labelItemRect;
             defItemRect.y += 25;
             Widgets.Label(defItemRect, $"[{mod}]");
-                
+
 
             Rect researchItemRect = labelItemRect;
             TextAnchor anchor = Text.Anchor;
             Text.Anchor = TextAnchor.UpperRight;
             if (researchDef != null) {
-                    Widgets.Label(researchItemRect, $"{researchDef}");
+                Widgets.Label(researchItemRect, $"{researchDef}");
             }
             else if ($"{currentDef.GetType()}" == "Verse.ThingDef") {
                 if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker != null || DefDatabase<ThingDef>.GetNamed(currentDef.defName).researchPrerequisites != null) {
@@ -924,7 +928,7 @@ namespace RimAges {
 
         public static void DrawResearchFilters(Rect contentRect, RimAgesSettings settings) {
             Listing_Standard listingStandard = new Listing_Standard();
-            
+
             Rect backRect = contentRect;
             listingStandard.Begin(backRect);
             Rect space = listingStandard.GetRect(backRect.height - buttonHeight);
@@ -1000,10 +1004,10 @@ namespace RimAges {
             Rect boundsBox = new Rect(bounds.pos, bounds.size);
             Widgets.DrawWindowBackground(boundsBox);
 
-            Rect dragRect = new Rect(boxPos.x+5, boxPos.y+5, 120, 40);
+            Rect dragRect = new Rect(boxPos.x + 5, boxPos.y + 5, 120, 40);
             if (Input.GetMouseButtonDown(0)) {
                 Vector2 pos = Event.current.mousePosition;
-                if ((pos.x >= boxPos.x && pos.x <= (boxPos.x + buttonWidth))&&(pos.y >= boxPos.y && pos.y <= (boxPos.y + buttonHeight))) {
+                if ((pos.x >= boxPos.x && pos.x <= (boxPos.x + buttonWidth)) && (pos.y >= boxPos.y && pos.y <= (boxPos.y + buttonHeight))) {
                     isDragging = true;
                 }
             }
@@ -1011,8 +1015,8 @@ namespace RimAges {
                 Vector2 pos = Event.current.mousePosition;
                 if (isDragging) {
                     if (!((pos.x >= bounds.pos.x + (buttonWidth / 2) && pos.x <= (bounds.pos.x + bounds.size.x) - (buttonWidth / 2) - 6) && (pos.y >= bounds.pos.y + (buttonHeight / 2) && pos.y <= (bounds.pos.y + bounds.size.y) - (buttonHeight / 2)))) {
-                        float x = pos.x - (buttonWidth/2);
-                        float y = pos.y - (buttonHeight/2);
+                        float x = pos.x - (buttonWidth / 2);
+                        float y = pos.y - (buttonHeight / 2);
                         if (pos.x <= bounds.pos.x + (buttonWidth / 2)) {
                             x = bounds.pos.x - 4;
                         }
@@ -1114,8 +1118,8 @@ namespace RimAges {
 
             public static void InitResearchCostBackup() {
                 RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
-                settings.ResearchCostBackup = new Dictionary<string, int>() 
-                { 
+                settings.ResearchCostBackup = new Dictionary<string, int>()
+                {
                     {"MedievalCookingCost", 1000},
                     {"MedievalDefensesCost", 1000},
                     {"MedievalHygieneCost", 1000},

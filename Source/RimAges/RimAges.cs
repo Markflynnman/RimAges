@@ -74,7 +74,7 @@ namespace RimAges {
         static void InitExcludeRequirement() {
             var researchDefs = DefDatabase<ResearchProjectDef>.AllDefsListForReading.ListFullCopy();
             foreach (var res in researchDefs) {
-                if (res.techprintCount == 0 && res.RequiredStudiedThingCount == 0) { continue; }
+                if (res.techprintCount == 0 && res.RequiredAnalyzedThingCount == 0) { continue; }
                 excludeRequirement.Add(res);
             }
 
@@ -205,7 +205,7 @@ namespace RimAges {
         static void ResearchPrerequisites(List<ResearchProjectDef> researchDefs, List<ResearchTabDef> tabs) {
             foreach(var res in researchDefs) {
                 // Add current research to "Age" research prerequisites
-                if (res.techLevel != TechLevel.Archotech && res.techprintCount == 0 && res.RequiredStudiedThingCount == 0) {
+                if (res.techLevel != TechLevel.Archotech && res.techprintCount == 0 && res.RequiredAnalyzedThingCount == 0) {
                     // Get index of current research techLevel in TechLevel enum, add 1 to get the next techLevel and add "Age" to the end to get correct research
                     var ageRes = DefDatabase<ResearchProjectDef>.GetNamed($"{(TechLevel)(byte)Enum.Parse(typeof(TechLevel), res.techLevel.ToString()) + 1}Age");
                     if (ageRes != res) {

@@ -5,6 +5,8 @@ VisualStudioVersion = 17.4.33205.214
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RimAges", "RimAges.csproj", "{EC44974C-AA91-4531-A03D-5E8B11FA47CB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RimAges - 1.4", "..\RimAges - 1.4\RimAges - 1.4.csproj", "{6A8763FE-F006-4B73-AEB0-3D12E1062423}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{EC44974C-AA91-4531-A03D-5E8B11FA47CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EC44974C-AA91-4531-A03D-5E8B11FA47CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EC44974C-AA91-4531-A03D-5E8B11FA47CB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6A8763FE-F006-4B73-AEB0-3D12E1062423}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6A8763FE-F006-4B73-AEB0-3D12E1062423}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6A8763FE-F006-4B73-AEB0-3D12E1062423}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6A8763FE-F006-4B73-AEB0-3D12E1062423}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
