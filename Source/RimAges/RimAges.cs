@@ -4,6 +4,7 @@ using System.Linq;
 using RimWorld;
 using Verse;
 using HarmonyLib;
+using System.Security.Cryptography;
 
 namespace RimAges {
     [StaticConstructorOnStartup]
@@ -12,6 +13,10 @@ namespace RimAges {
         public static string modTag = "[RimAges]";
         public static List<ResearchProjectDef> techAgeResearch = new List<ResearchProjectDef>();
         public static List<ResearchProjectDef> excludeRequirement = new List<ResearchProjectDef>();
+        public static Dictionary<Def, ResearchProjectDef> defaultDefs = new Dictionary<Def, ResearchProjectDef>();
+        public static HashSet<ResearchProjectDef> clearCacheList = new HashSet<ResearchProjectDef>();
+
+        public static bool emptyCache = false;
 
         static RimAges() {
             Harmony harmony = new Harmony("rimages.markflynnman.patch");
@@ -22,6 +27,15 @@ namespace RimAges {
 
             InitTechAgeResearch();
             InitExcludeRequirement();
+
+            if (defaultDefs.NullOrEmpty()) {
+                foreach (Def def in RimAgesMod.GetUsableDefs()) {
+                    var research = RimAgesMod.GetResearchProjectDef(def);
+                    if (research.valid) {
+                        defaultDefs.Add(def, research.researchDef);
+                    }
+                }
+            }
 
             var tabs = DefDatabase<ResearchTabDef>.AllDefsListForReading.ListFullCopy();
             tabs = ManageTabs(tabs);
@@ -60,7 +74,7 @@ namespace RimAges {
         static void InitExcludeRequirement() {
             var researchDefs = DefDatabase<ResearchProjectDef>.AllDefsListForReading.ListFullCopy();
             foreach (var res in researchDefs) {
-                if (res.techprintCount == 0 && res.RequiredStudiedThingCount == 0) { continue; }
+                if (res.techprintCount == 0 && res.RequiredAnalyzedThingCount == 0) { continue; }
                 excludeRequirement.Add(res);
             }
 
@@ -191,7 +205,7 @@ namespace RimAges {
         static void ResearchPrerequisites(List<ResearchProjectDef> researchDefs, List<ResearchTabDef> tabs) {
             foreach(var res in researchDefs) {
                 // Add current research to "Age" research prerequisites
-                if (res.techLevel != TechLevel.Archotech && res.techprintCount == 0 && res.RequiredStudiedThingCount == 0) {
+                if (res.techLevel != TechLevel.Archotech && res.techprintCount == 0 && res.RequiredAnalyzedThingCount == 0) {
                     // Get index of current research techLevel in TechLevel enum, add 1 to get the next techLevel and add "Age" to the end to get correct research
                     var ageRes = DefDatabase<ResearchProjectDef>.GetNamed($"{(TechLevel)(byte)Enum.Parse(typeof(TechLevel), res.techLevel.ToString()) + 1}Age");
                     if (ageRes != res) {
@@ -324,9 +338,104 @@ namespace RimAges {
         }
 
         public static void UpdateResearch() {
-            Log.Message($"{modTag} - TODO: ADD SYSTEM TO UPDATE RESEARCH");
             RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
-            //DefDatabase<ResearchProjectDef>.GetNamed(settings.
+            ResearchProjectDef currentResearch = DefDatabase<ResearchProjectDef>.GetNamed(RimAgesSettings.currentResearch.Replace(" ", ""));
+            Dictionary<Def, ResearchProjectDef> currentDefDict = RimAgesMod.UpdateDefDict(RimAgesSettings.currentResearch);
+            if (RimAgesSettings.rightDefDictInit == false) { return; }
+            foreach (var def in RimAgesSettings.rightDefDict) {
+                if (!currentDefDict.ContainsKey(def.Key)) { // If def is not in currentResearch unlocks
+                    RemoveResearch(def.Key);
+                    AddResearch(def.Key, currentResearch);
+                    clearCacheList.Add(currentResearch);
+                }
+            }
+            foreach (var def in currentDefDict) {
+                if (!RimAgesSettings.rightDefDict.ContainsKey(def.Key)) {
+                    RemoveResearch(def.Key);
+                    clearCacheList.Add(currentResearch);
+                }
+            }
+
+            //if (DefDatabase<TerrainDef>.GetNamed("WoodPlankFloor").researchPrerequisites != null) {
+            //    Log.Warning($"{modTag} - researchPrerequisites found");
+            //    DefDatabase<TerrainDef>.GetNamed("WoodPlankFloor").researchPrerequisites.Add(DefDatabase<ResearchProjectDef>.GetNamed("ArchotechAge"));
+            //}
+        }
+
+        public static void RemoveResearch(Def def) {
+            switch ($"{def.GetType()}") {
+                case "Verse.TerrainDef":
+                    try {
+                        DefDatabase<TerrainDef>.GetNamed(def.defName).researchPrerequisites.Clear();
+                        
+                    }
+                    catch (Exception) {
+                        //Log.Error($"[RimAges] ERROR: {currentDef.defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.\n{e}");
+                    }
+                    break;
+                case "Verse.ThingDef":
+                    if (DefDatabase<ThingDef>.GetNamed(def.defName).category == ThingCategory.Building && DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker == null) {
+                        try {
+                            DefDatabase<ThingDef>.GetNamed(def.defName).researchPrerequisites.Clear();
+                        }
+                        catch (Exception) {
+                            //Log.Error($"[RimAges] ERROR: {currentDef.defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.\n{e}");
+                        }
+                    }
+                    else if (DefDatabase<ThingDef>.GetNamed(def.defName).category == ThingCategory.Plant) {
+                        try {
+                            DefDatabase<ThingDef>.GetNamed(def.defName).plant.sowResearchPrerequisites.Clear();
+                        }
+                        catch (Exception) {
+                            //Log.Error($"[RimAges] ERROR: {currentDef.defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.\n{e}");
+                        }
+                    }
+                    else if (DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker != null) {
+                        DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker.researchPrerequisite = null;
+                    }
+                    break;
+                case "Verse.RecipeDef":
+                    DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite = null;
+                    break;
+            }
+        }
+
+        public static void AddResearch(Def def, ResearchProjectDef researchDef) {
+            switch ($"{def.GetType()}") {
+                case "Verse.TerrainDef":
+                    try {
+                        DefDatabase<TerrainDef>.GetNamed(def.defName).researchPrerequisites.Add(researchDef);
+
+                    }
+                    catch (Exception e) {
+                        Log.Error($"[RimAges] ERROR: {def.defName} - Failed to add research.\n{e}");
+                    }
+                    break;
+                case "Verse.ThingDef":
+                    if (DefDatabase<ThingDef>.GetNamed(def.defName).category == ThingCategory.Building && DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker == null) {
+                        try {
+                            DefDatabase<ThingDef>.GetNamed(def.defName).researchPrerequisites.Add(researchDef);
+                        }
+                        catch (Exception e) {
+                            Log.Error($"[RimAges] ERROR: {def.defName} - Failed to add research.\n{e}");
+                        }
+                    }
+                    else if (DefDatabase<ThingDef>.GetNamed(def.defName).category == ThingCategory.Plant) {
+                        try {
+                            DefDatabase<ThingDef>.GetNamed(def.defName).plant.sowResearchPrerequisites.Add(researchDef);
+                        }
+                        catch (Exception e) {
+                            Log.Error($"[RimAges] ERROR: {def.defName} - Failed to add research.\n{e}");
+                        }
+                    }
+                    else if (DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker != null) {
+                        DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker.researchPrerequisite = researchDef;
+                    }
+                    break;
+                case "Verse.RecipeDef":
+                    DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite = researchDef;
+                    break;
+            }
         }
 
         // Currently not used

@@ -1,30 +1,10 @@
 ﻿using Verse;
 using HarmonyLib;
 using System;
+using RimWorld;
+using System.Collections.Generic;
 
 namespace RimAges {
-    //[HarmonyPatch(typeof(ResearchManager))]
-    //[HarmonyPatch("FinishProject")]
-    //internal class Patch_FinishProject_Patch {
-    //    // Get ref of the completed research and pass to Postfix
-    //    public static void Prefix(ref ResearchProjectDef proj, out ResearchProjectDef __state) {
-    //        if (proj != null) { __state = proj; }
-    //        else { __state = null; }
-    //    }
-
-    //    public static void Postfix(ResearchProjectDef __state) {
-    //        var proj = __state;
-    //        if (proj == null) {
-    //            Log.Error($"{RimAges.modTag} Postfix __state is Null!");
-    //        }
-
-    //        // If completed research is in techAgeResearch (one of the "Age" researches) then reduce cost of research in corresponding age
-    //        if (RimAges.techAgeResearch.Contains(proj)) {
-    //            RimAges.UnlockAge(proj.defName, proj.techLevel);
-    //        }
-    //    }
-    //}
-
     // No research patch
     [HarmonyPatch(typeof(ResearchUtility), "ApplyPlayerStartingResearch")]
     public class NewGamePatch {
@@ -43,6 +23,21 @@ namespace RimAges {
             RimAges.ApplyResearchCost();
             RimAges.ApplyEmptyResearch();
             RimAges.UpdateResearch();
+        }
+    }
+
+    [HarmonyPatch(typeof(MainTabWindow_Research), "UnlockedDefsGroupedByPrerequisites")]
+    public class ResearchTabClearCache {
+        public static void Postfix(ref List<Pair<ResearchPrerequisitesUtility.UnlockedHeader, List<Def>>> __result, ResearchProjectDef project) {
+            if (RimAges.clearCacheList.Contains(project)) {
+                Traverse.Create(project).Field("cachedUnlockedDefs").SetValue(null);
+
+                Log.Warning($"{RimAges.modTag} - Cache cleared!");
+
+                RimAges.clearCacheList.Remove(project);
+            }
+
+            __result = ResearchPrerequisitesUtility.UnlockedDefsGroupedByPrerequisites(project);
         }
     }
 }
