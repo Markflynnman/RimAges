@@ -7,9 +7,9 @@ using UnityEngine;
 
 namespace RimAges {
     public class RimAges_Utility {
-        public static void Drag((Def, ResearchProjectDef, Vector2) dragging) {
+        public static void Drag((Def, List<ResearchProjectDef>, Vector2) dragging) {
             Def def = dragging.Item1;
-            ResearchProjectDef researchProjectDef = dragging.Item2;
+            List<ResearchProjectDef> researchProjectDef = dragging.Item2;
             Vector2 size = dragging.Item3;
 
             Rect dragRect = new Rect(0, 0, size.x, size.y);

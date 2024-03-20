@@ -13,7 +13,7 @@ namespace RimAges {
         public static string modTag = "[RimAges]";
         public static List<ResearchProjectDef> techAgeResearch = new List<ResearchProjectDef>();
         public static List<ResearchProjectDef> excludeRequirement = new List<ResearchProjectDef>();
-        public static Dictionary<Def, ResearchProjectDef> defaultDefs = new Dictionary<Def, ResearchProjectDef>();
+        public static Dictionary<Def, List<ResearchProjectDef>> defaultDefs = new Dictionary<Def, List<ResearchProjectDef>>();
         public static HashSet<ResearchProjectDef> clearCacheList = new HashSet<ResearchProjectDef>();
 
         public static bool emptyCache = false;
@@ -237,7 +237,7 @@ namespace RimAges {
 
         public static void ApplyEmptyResearch() {
             RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
-            RimAgesMod.RimAgesBackup.SaveBackup();
+            RimAgesMod.RimAgesBackup.Save();
             if (settings.emptyResearch == false) {
                 var res = DefDatabase<ResearchProjectDef>.AllDefsListForReading.ListFullCopy();
                 foreach (var def in res) {
@@ -340,26 +340,25 @@ namespace RimAges {
         public static void UpdateResearch() {
             RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
             ResearchProjectDef currentResearch = DefDatabase<ResearchProjectDef>.GetNamed(RimAgesSettings.currentResearch.Replace(" ", ""));
-            Dictionary<Def, ResearchProjectDef> currentDefDict = RimAgesMod.UpdateDefDict(RimAgesSettings.currentResearch);
+            Dictionary<Def, List<ResearchProjectDef>> currentDefDict = RimAgesMod.UpdateDefDict(RimAgesSettings.currentResearch);
             if (RimAgesSettings.rightDefDictInit == false) { return; }
             foreach (var def in RimAgesSettings.rightDefDict) {
                 if (!currentDefDict.ContainsKey(def.Key)) { // If def is not in currentResearch unlocks
+                    RimAgesMod.RimAgesResearchChanges.Remove(def);
                     RemoveResearch(def.Key);
-                    AddResearch(def.Key, currentResearch);
+                    AddResearch(def.Key, new List<ResearchProjectDef>{ currentResearch });
+                    foreach (ResearchProjectDef research in def.Value) { clearCacheList.Add(research); }
                     clearCacheList.Add(currentResearch);
                 }
             }
             foreach (var def in currentDefDict) {
                 if (!RimAgesSettings.rightDefDict.ContainsKey(def.Key)) {
+                    RimAgesMod.RimAgesResearchChanges.Remove(def);
                     RemoveResearch(def.Key);
+                    foreach (ResearchProjectDef research in def.Value) { clearCacheList.Add(research); }
                     clearCacheList.Add(currentResearch);
                 }
             }
-
-            //if (DefDatabase<TerrainDef>.GetNamed("WoodPlankFloor").researchPrerequisites != null) {
-            //    Log.Warning($"{modTag} - researchPrerequisites found");
-            //    DefDatabase<TerrainDef>.GetNamed("WoodPlankFloor").researchPrerequisites.Add(DefDatabase<ResearchProjectDef>.GetNamed("ArchotechAge"));
-            //}
         }
 
         public static void RemoveResearch(Def def) {
@@ -400,11 +399,13 @@ namespace RimAges {
             }
         }
 
-        public static void AddResearch(Def def, ResearchProjectDef researchDef) {
+        public static void AddResearch(Def def, List<ResearchProjectDef> researchDefs) {
             switch ($"{def.GetType()}") {
                 case "Verse.TerrainDef":
                     try {
-                        DefDatabase<TerrainDef>.GetNamed(def.defName).researchPrerequisites.Add(researchDef);
+                        foreach (ResearchProjectDef researchDef in researchDefs) {
+                            DefDatabase<TerrainDef>.GetNamed(def.defName).researchPrerequisites.Add(researchDef);
+                        }
 
                     }
                     catch (Exception e) {
@@ -414,7 +415,9 @@ namespace RimAges {
                 case "Verse.ThingDef":
                     if (DefDatabase<ThingDef>.GetNamed(def.defName).category == ThingCategory.Building && DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker == null) {
                         try {
-                            DefDatabase<ThingDef>.GetNamed(def.defName).researchPrerequisites.Add(researchDef);
+                            foreach (ResearchProjectDef researchDef in researchDefs) {
+                                DefDatabase<ThingDef>.GetNamed(def.defName).researchPrerequisites.Add(researchDef);
+                            }
                         }
                         catch (Exception e) {
                             Log.Error($"[RimAges] ERROR: {def.defName} - Failed to add research.\n{e}");
@@ -422,18 +425,20 @@ namespace RimAges {
                     }
                     else if (DefDatabase<ThingDef>.GetNamed(def.defName).category == ThingCategory.Plant) {
                         try {
-                            DefDatabase<ThingDef>.GetNamed(def.defName).plant.sowResearchPrerequisites.Add(researchDef);
+                            foreach (ResearchProjectDef researchDef in researchDefs) {
+                                DefDatabase<ThingDef>.GetNamed(def.defName).plant.sowResearchPrerequisites.Add(researchDef);
+                            }
                         }
                         catch (Exception e) {
                             Log.Error($"[RimAges] ERROR: {def.defName} - Failed to add research.\n{e}");
                         }
                     }
                     else if (DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker != null) {
-                        DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker.researchPrerequisite = researchDef;
+                        DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker.researchPrerequisite = researchDefs[0];
                     }
                     break;
                 case "Verse.RecipeDef":
-                    DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite = researchDef;
+                    DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite = researchDefs[0];
                     break;
             }
         }

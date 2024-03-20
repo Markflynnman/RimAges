@@ -29,22 +29,23 @@ namespace RimAges {
         public int TrainingTargetsCost;
         public int SpacerPlantsCost;
         public Dictionary<string, int> ResearchCostBackup = new Dictionary<string, int>();
-        
+        public Dictionary<string, List<string>> ResearchChanges;
+
 
         public static Vector2 leftScrollPos;
         public static Vector2 rightScrollPos;
         public static int currentPage = 0;
-        public static string currentResearch = "Machining";
+        public static string currentResearch = "Medieval Age";
         public static bool isDragging = false;
-        public static (Def, ResearchProjectDef, Vector2) dragging;
+        public static (Def, List<ResearchProjectDef>, Vector2) dragging;
         public static Vector2 boxPos = new Vector2(200, 300);
         public static bool researchDropDownActive = false;
         public static bool filterDropDownActive = false;
         public static bool assignedDefsFilter = false;
         public static string searchFilter;
 
-        public static Dictionary<Def, ResearchProjectDef> leftDefDict = new Dictionary<Def, ResearchProjectDef>();
-        public static Dictionary<Def, ResearchProjectDef> rightDefDict = new Dictionary<Def, ResearchProjectDef>();
+        public static Dictionary<Def, List<ResearchProjectDef>> leftDefDict = new Dictionary<Def, List<ResearchProjectDef>>();
+        public static Dictionary<Def, List<ResearchProjectDef>> rightDefDict = new Dictionary<Def, List<ResearchProjectDef>>();
         public static bool rightDefDictInit = false;
 
         public override void ExposeData() {
@@ -63,6 +64,7 @@ namespace RimAges {
             Scribe_Values.Look(ref TrainingTargetsCost, "TrainingTargetsCost", 1000);
             Scribe_Values.Look(ref SpacerPlantsCost, "SpacerPlantsCost", 1000);
             Scribe_Collections.Look(ref ResearchCostBackup, "ResearchCostBackup", LookMode.Value, LookMode.Value);
+            Scribe_Collections.Look(ref ResearchChanges, "ResearchChanges", LookMode.Value, LookMode.Value);
 
             base.ExposeData();
         }
@@ -289,7 +291,7 @@ namespace RimAges {
 
             // Filter Left Def Dict
             List<Def> leftDefList = leftDefDict.Keys.ToList();
-            Dictionary<Def, ResearchProjectDef> filteredLeftDefDict = FilterDefs(leftDefList);
+            Dictionary<Def, List<ResearchProjectDef>> filteredLeftDefDict = FilterDefs(leftDefList);
 
             // Results
             Rect resultsRect = searchRect;
@@ -316,8 +318,8 @@ namespace RimAges {
 
             // Add/Remove defs from dicts
             Vector2 mousePos = Event.current.mousePosition;
-            if ((mousePos.x > leftScrollRect.xMin && mousePos.x < leftScrollRect.xMax) && (mousePos.y > leftScrollRect.yMin && mousePos.y < leftScrollRect.yMax)) {
-                if (isDragging) {
+            if ((mousePos.x > leftScrollRect.xMin && mousePos.x < leftScrollRect.xMax) && (mousePos.y > leftScrollRect.yMin && mousePos.y < leftScrollRect.yMax)) { // Add to left side
+                if (isDragging) { // Draw highlight
                     // TODO Make highlight draw over all scroll items
                     Rect leftHighlight = leftScrollRect;
                     Widgets.DrawHighlight(leftHighlight);
@@ -332,8 +334,8 @@ namespace RimAges {
                     } 
                 }
             }
-            if ((mousePos.x > rightScrollRect.xMin && mousePos.x < rightScrollRect.xMax) && (mousePos.y > rightScrollRect.yMin && mousePos.y < rightScrollRect.yMax)) {
-                if (isDragging) {
+            if ((mousePos.x > rightScrollRect.xMin && mousePos.x < rightScrollRect.xMax) && (mousePos.y > rightScrollRect.yMin && mousePos.y < rightScrollRect.yMax)) { // Add to right side
+                if (isDragging) { // Draw highlight
                     // TODO Make highlight draw over all scroll items
                     Rect rightHighlight = rightScrollRect;
                     Widgets.DrawHighlight(rightHighlight);
@@ -388,14 +390,14 @@ namespace RimAges {
             }
         }
 
-        public static Dictionary<Def, ResearchProjectDef> UpdateDefDict(string researchName) {
-            Dictionary<Def, ResearchProjectDef> defDict = new Dictionary<Def, ResearchProjectDef>();
+        public static Dictionary<Def, List<ResearchProjectDef>> UpdateDefDict(string researchName) { // Make/Update defDict for left & right scroll lists
+            Dictionary<Def, List<ResearchProjectDef>> defDict = new Dictionary<Def, List<ResearchProjectDef>>();
             if (researchName == null) {
                 List<Def> defList = allDefs;
                 for (int i = 0; i < defList.Count; i++) {
                     Def currentDef = defList[i];
                     Def keyDef = null;
-                    ResearchProjectDef valueDef;
+                    List<ResearchProjectDef> valueDef;
                     bool valid;
                     (valueDef, valid)  = GetResearchProjectDef(currentDef);
                     if (valid) { // True if current def has a researchPrerequisite(s) tag
@@ -411,9 +413,9 @@ namespace RimAges {
                 researchName = currentResearch.Replace(" ", "");
                 foreach (Def def in defList) {
                     var research = GetResearchProjectDef(def);
-                    if (research.researchDef != null && research.valid == true) {
-                        if (research.researchDef == DefDatabase<ResearchProjectDef>.GetNamed($"{researchName}")) {
-                            defDict.Add(def, DefDatabase<ResearchProjectDef>.GetNamed($"{researchName}"));
+                    if ((!research.researchDef.NullOrEmpty()) && research.valid == true) {
+                        if (research.researchDef.Contains(DefDatabase<ResearchProjectDef>.GetNamed($"{researchName}"))) {
+                            defDict.Add(def, research.researchDef);
                             if (isDragging) {
                                 if (dragging != (null, null, new Vector2(0, 0))) {
                                     if (!(defDict.ContainsKey(dragging.Item1))) {
@@ -428,16 +430,14 @@ namespace RimAges {
             return defDict;
         }
 
-        public static (ResearchProjectDef researchDef, bool valid) GetResearchProjectDef(Def def) {
+        public static (List<ResearchProjectDef> researchDef, bool valid) GetResearchProjectDef(Def def) {
             switch ($"{def.GetType()}") {
 #pragma warning disable 0168
                 case "Verse.TerrainDef":
                     try {
                         List<ResearchProjectDef> researchList = DefDatabase<TerrainDef>.GetNamed(def.defName).researchPrerequisites;
-                        if (!(researchList.Distinct().Count() > 1)) {
-                            if (researchList.Count != 0) {
-                                return (researchList[0], true);
-                            }
+                        if (researchList.Count != 0) {
+                            return (researchList.Distinct().ToList(), true);
                         }
                     }
                     catch (Exception e) {
@@ -449,10 +449,8 @@ namespace RimAges {
                     if (DefDatabase<ThingDef>.GetNamed(def.defName).category == ThingCategory.Building && DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker == null) {
                         try {
                             List<ResearchProjectDef> researchList = DefDatabase<ThingDef>.GetNamed(def.defName).researchPrerequisites;
-                            if (!(researchList.Distinct().Count() > 1)) {
-                                if (researchList.Count != 0) {
-                                    return (researchList[0], true);
-                                }
+                            if (researchList.Count != 0) {
+                                return (researchList.Distinct().ToList(), true);
                             }
                         }
                         catch (Exception e) {
@@ -463,10 +461,8 @@ namespace RimAges {
                     else if (DefDatabase<ThingDef>.GetNamed(def.defName).category == ThingCategory.Plant) {
                         try {
                             List<ResearchProjectDef> researchList = DefDatabase<ThingDef>.GetNamed(def.defName).plant.sowResearchPrerequisites;
-                            if (!(researchList.Distinct().Count() > 1)) {
-                                if (researchList.Count != 0) {
-                                    return (researchList[0], true);
-                                }
+                            if (researchList.Count != 0) {
+                                return (researchList.Distinct().ToList(), true);
                             }
                         }
                         catch (Exception e) {
@@ -476,13 +472,13 @@ namespace RimAges {
                     }
                     else if (DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker != null) {
                         if (DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker.researchPrerequisite != null) {
-                            return (DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker.researchPrerequisite, true);
+                            return (new List<ResearchProjectDef>{DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker.researchPrerequisite}, true);
                         }
                     }
                     break;
                 case "Verse.RecipeDef":
                     if (DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite != null) { 
-                        return (DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite, true) ;
+                        return (new List<ResearchProjectDef>{DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite}, true) ;
                     }
                     break;
 #pragma warning restore 0168
@@ -490,12 +486,12 @@ namespace RimAges {
             return (null, true);
         }
 
-        public static Dictionary<Def, ResearchProjectDef> FilterDefs(List<Def> defList) {
-            Dictionary<Def, ResearchProjectDef> defDict = new Dictionary<Def, ResearchProjectDef>();
+        public static Dictionary<Def, List<ResearchProjectDef>> FilterDefs(List<Def> defList) {
+            Dictionary<Def, List<ResearchProjectDef>> defDict = new Dictionary<Def, List<ResearchProjectDef>>();
             for (int i = 0; i < defList.Count; i++) {
                 Def currentDef = defList[i];
                 Def keyDef = null;
-                ResearchProjectDef valueDef = null;
+                List<ResearchProjectDef> valueDef = new List<ResearchProjectDef>();
                 if (assignedDefsFilter) { // any filters == true
                     if (assignedDefsFilter) {
 #pragma warning disable 0168
@@ -503,7 +499,8 @@ namespace RimAges {
                             case "Verse.TerrainDef":
                                 try {
                                     if (DefDatabase<TerrainDef>.GetNamed(currentDef.defName).researchPrerequisites.Count == 0) { keyDef = currentDef; }
-                                }                                catch (Exception e) {
+                                }                                
+                                catch (Exception e) {
                                     Log.Warning($"[RimAges] ERROR: {currentDef.defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.");
                                 }
                                 break;
@@ -551,11 +548,9 @@ namespace RimAges {
                         case "Verse.TerrainDef":
                             try {
                                 List<ResearchProjectDef> researchList = DefDatabase<TerrainDef>.GetNamed(currentDef.defName).researchPrerequisites;
-                                if (!(researchList.Distinct().Count() > 1)) { 
-                                    keyDef = currentDef;
-                                    if (researchList.Count != 0) {
-                                        valueDef = researchList[0];
-                                    }
+                                keyDef = currentDef;
+                                if (researchList.Count != 0) {
+                                    valueDef = researchList.Distinct().ToList();
                                 }
                             }
                             catch (Exception e) {
@@ -566,11 +561,9 @@ namespace RimAges {
                             if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).category == ThingCategory.Building && DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker == null) {
                                 try {
                                     List<ResearchProjectDef> researchList = DefDatabase<ThingDef>.GetNamed(currentDef.defName).researchPrerequisites;
-                                    if (!(researchList.Distinct().Count() > 1)) { 
-                                        keyDef = currentDef;
-                                        if (researchList.Count != 0) {
-                                            valueDef = researchList[0];
-                                        }
+                                    keyDef = currentDef;
+                                    if (researchList.Count != 0) {
+                                        valueDef = researchList.Distinct().ToList();
                                     }
                                 }
                                 catch (Exception e) {
@@ -580,11 +573,9 @@ namespace RimAges {
                             else if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).category == ThingCategory.Plant) {
                                 try {
                                     List<ResearchProjectDef> researchList = DefDatabase<ThingDef>.GetNamed(currentDef.defName).plant.sowResearchPrerequisites;
-                                    if (!(researchList.Distinct().Count() > 1)) { 
-                                        keyDef = currentDef;
-                                        if (researchList.Count != 0) {
-                                            valueDef = researchList[0];
-                                        }
+                                    keyDef = currentDef;
+                                    if (researchList.Count != 0) {
+                                        valueDef = researchList.Distinct().ToList();
                                     }
                                 }
                                 catch (Exception e) {
@@ -594,14 +585,16 @@ namespace RimAges {
                             else if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker != null) { 
                                 keyDef = currentDef; 
                                 if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker.researchPrerequisite != null) {
-                                    valueDef = DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker.researchPrerequisite;
+                                    valueDef.Add(DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker.researchPrerequisite);
                                 }
                             }
                             break;
                         case "Verse.RecipeDef":
                             keyDef = currentDef;
                             try {
-                                if (DefDatabase<RecipeDef>.GetNamed(currentDef.defName).researchPrerequisite != null) { valueDef = DefDatabase<RecipeDef>.GetNamed(currentDef.defName).researchPrerequisite; }
+                                if (DefDatabase<RecipeDef>.GetNamed(currentDef.defName).researchPrerequisite != null) { 
+                                    valueDef.Add(DefDatabase<RecipeDef>.GetNamed(currentDef.defName).researchPrerequisite);
+                                    }
                             }
                             catch (Exception e) {
                                 Log.Warning($"[RimAges] ERROR: {defList[i].defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.");
@@ -619,11 +612,11 @@ namespace RimAges {
         }
 
         // Return searched list of defs
-        public static Dictionary<Def, ResearchProjectDef> searchDefs(Dictionary<Def, ResearchProjectDef> defDict) {
+        public static Dictionary<Def, List<ResearchProjectDef>> searchDefs(Dictionary<Def, List<ResearchProjectDef>> defDict) {
             // Check if searched term is in def.label def.defName or defs research
-            Dictionary<Def, ResearchProjectDef> searchedDefs = new Dictionary<Def, ResearchProjectDef>();
+            Dictionary<Def, List<ResearchProjectDef>> searchedDefs = new Dictionary<Def, List<ResearchProjectDef>>();
             string search = searchFilter.ToLower();
-            string[] searchWords = search.Split(','); // bed, thing
+            string[] searchWords = search.Split(',');
             List<string> keywords = new List<string> { "#name", "#def", "#type", "#research", "#mod" };
 
             if (searchWords.Length > 1) { // Multiple Terms
@@ -668,9 +661,13 @@ namespace RimAges {
                         string defName = item.Key.defName.ToLower().Replace(" ", "");
                         string defType = item.Key.GetType().ToString().ToLower().Replace("verse.", "");
                         string modTag = item.Key.modContentPack.ToStringSafe().ToLower().Replace(" ", "");
-                        string researchName;
-                        if (item.Value != null) { researchName = item.Value.defName.ToLower().Replace(" ", ""); }
-                        else { researchName = "nullnonenotfound"; } // allows terms: null / none / not found
+                        List<string> researchNames = new List<string>();
+                        if (!item.Value.NullOrEmpty()) {
+                            foreach (ResearchProjectDef research in item.Value) {
+                                researchNames.Add(research.defName.ToLower().Replace(" ", ""));
+                            }
+                        }
+                        else { researchNames.Add("nullnonenotfound"); } // allows terms: null / none / not found
                         if (foundKeywords[i] != null) {
                             switch (foundKeywords[i]) {
                                 case "#name":
@@ -686,8 +683,18 @@ namespace RimAges {
                                     else { if (defType.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
                                     break;
                                 case "#research":
-                                    if (modifier == "!") { if (!(researchName.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
-                                    else { if (researchName.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
+                                    if (modifier == "!") {
+                                        bool found = false;
+                                        foreach (string research in researchNames) {
+                                            if ((research.Contains(search))) { found = true; break; }
+                                        }
+                                        if (!found) { searchedDefs.Add(item.Key, item.Value); }
+                                    }
+                                    else {
+                                        if (researchNames.Contains(search)) {
+                                            searchedDefs.Add(item.Key, item.Value);
+                                        }
+                                    }
                                     break;
                                 case "#mod":
                                     if (modifier == "!") { if (!(modTag.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
@@ -695,8 +702,19 @@ namespace RimAges {
                                     break;
                             }
                         }
-                        else if (modifier == "!") { if (!(label.Contains(search) || defName.Contains(search) || defType.Contains(search) || researchName.Contains(search) || modTag.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
-                        else if (label.Contains(search) || defName.Contains(search) || defType.Contains(search) || researchName.Contains(search) || modTag.Contains(search)) { searchedDefs.Add(item.Key, item.Value); }
+                        else if (modifier == "!") {
+                            bool found = false;
+                            foreach (string research in researchNames) {
+                                if ((label.Contains(search) || defName.Contains(search) || defType.Contains(search) || research.Contains(search) || modTag.Contains(search))) { found = true; break; }
+                            }
+                            if (!found) { searchedDefs.Add(item.Key, item.Value); }
+                        }
+                        else if (label.Contains(search) || defName.Contains(search) || defType.Contains(search) || modTag.Contains(search)) { searchedDefs.Add(item.Key, item.Value); }
+                        else {
+                            foreach (string research in researchNames) {
+                                if (research.Contains(search)) { searchedDefs.Add(item.Key, item.Value); }
+                            }
+                        }
                     }
                 }
             }
@@ -727,9 +745,13 @@ namespace RimAges {
                     string defName = item.Key.defName.ToLower().Replace(" ", "");
                     string defType = item.Key.GetType().ToString().ToLower().Replace("verse.", "");
                     string modTag = item.Key.modContentPack.ToStringSafe().ToLower().Replace(" ", "");
-                    string researchName;
-                    if (item.Value != null) { researchName = item.Value.defName.ToLower().Replace(" ", ""); }
-                    else { researchName = "nullnonenotfound"; } // allows terms: null / none / not found
+                    List<string> researchNames = new List<string>();
+                    if (!item.Value.NullOrEmpty()) {
+                        foreach (ResearchProjectDef research in item.Value) {
+                            researchNames.Add(research.defName.ToLower().Replace(" ", ""));
+                        }
+                    }
+                    else { researchNames.Add("nullnonenotfound"); } // allows terms: null / none / not found
                     if (foundKeyword != null) {
                         switch (foundKeyword) {
                             case "#name":
@@ -745,8 +767,17 @@ namespace RimAges {
                                 else { if (defType.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
                                 break;
                             case "#research":
-                                if (modifier == "!") { if (!(researchName.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
-                                else { if (researchName.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
+                                if (modifier == "!") {
+                                    bool found = false;
+                                    foreach (string research in researchNames) {
+                                        if ((research.Contains(search))) { found = true; break; }
+                                    }
+                                    if (!found) { searchedDefs.Add(item.Key, item.Value); }
+                                }
+                                else { 
+                                    if (researchNames.Contains(search)) { searchedDefs.Add(item.Key, item.Value); 
+                                    } 
+                                }
                                 break;
                             case "#mod":
                                 if (modifier == "!") { if (!(modTag.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
@@ -754,8 +785,19 @@ namespace RimAges {
                                 break;
                         }
                     }
-                    else if (modifier == "!") { if (!(label.Contains(search) || defName.Contains(search) || defType.Contains(search) || researchName.Contains(search) || modTag.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
-                    else if (label.Contains(search) || defName.Contains(search) || defType.Contains(search) || researchName.Contains(search) || modTag.Contains(search)) { searchedDefs.Add(item.Key, item.Value); }
+                    else if (modifier == "!") {
+                        bool found = false;
+                        foreach (string research in researchNames) {
+                            if ((label.Contains(search) || defName.Contains(search) || defType.Contains(search) || research.Contains(search) || modTag.Contains(search))) { found = true; break; }
+                        }
+                        if (!found) { searchedDefs.Add(item.Key, item.Value); }
+                    }
+                    else if (label.Contains(search) || defName.Contains(search) || defType.Contains(search) || modTag.Contains(search)) { searchedDefs.Add(item.Key, item.Value); }
+                    else {
+                        foreach(string research in researchNames) {
+                            if (research.Contains(search)) { searchedDefs.Add(item.Key, item.Value); }
+                        }
+                    }
                 }
             }
             return searchedDefs;
@@ -763,7 +805,7 @@ namespace RimAges {
 
         // Makes a scrollable list of defs
         public class DefScroll {
-            public Dictionary<Def, ResearchProjectDef> defDict;
+            public Dictionary<Def, List<ResearchProjectDef>> defDict;
             public Rect defListRect;
             public Rect scrollPosRect;
             public Listing_Standard listingStandard;
@@ -777,7 +819,7 @@ namespace RimAges {
                 lineHeight = _lineHeight;
             }
 
-            public void DrawDefScroll(ref Vector2 _scrollPos, Dictionary<Def, ResearchProjectDef> _defDict) {
+            public void DrawDefScroll(ref Vector2 _scrollPos, Dictionary<Def, List<ResearchProjectDef>> _defDict) {
                 defDict = _defDict;
                 Widgets.BeginScrollView(scrollPosRect, ref _scrollPos, defListRect, true);
                 listingStandard.Begin(defListRect);
@@ -793,7 +835,7 @@ namespace RimAges {
                     Widgets.DrawWindowBackground(rect);
                     if (lineNumber % 2 != 1) { Widgets.DrawLightHighlight(rect); }
                     Def currentDef = item.Key;
-                    ResearchProjectDef researchDef = item.Value;
+                    List<ResearchProjectDef> researchDef = item.Value;
                     DrawListItem(rect, currentDef, researchDef);
 
                     if (Mouse.IsOver(rect)) {
@@ -806,7 +848,7 @@ namespace RimAges {
             }
         }
 
-        public static void DrawListItem(Rect rect, Def currentDef, ResearchProjectDef researchDef) {
+        public static void DrawListItem(Rect rect, Def currentDef, List<ResearchProjectDef> researchDef) {
             Rect labelItemRect = rect.ContractedBy(5);
             labelItemRect.height = 22;
             Widgets.Label(labelItemRect, $"{currentDef.label.CapitalizeFirst()}");
@@ -822,8 +864,13 @@ namespace RimAges {
             Rect researchItemRect = labelItemRect;
             TextAnchor anchor = Text.Anchor;
             Text.Anchor = TextAnchor.UpperRight;
-            if (researchDef != null) {
-                    Widgets.Label(researchItemRect, $"{researchDef}");
+            if (!researchDef.NullOrEmpty()) {
+                if (researchDef.Count > 1) {
+                    Widgets.Label(researchItemRect, $"{researchDef[0]}+{researchDef.Count-1}");
+                }
+                else {
+                    Widgets.Label(researchItemRect, $"{researchDef[0]}");
+                }
             }
             else if ($"{currentDef.GetType()}" == "Verse.ThingDef") {
                 if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker != null || DefDatabase<ThingDef>.GetNamed(currentDef.defName).researchPrerequisites != null) {
@@ -873,11 +920,6 @@ namespace RimAges {
             }
             if (listingStandard.RadioButton("Archotech Age", currentResearch == "Archotech Age")) {
                 currentResearch = "Archotech Age";
-                researchDropDownActive = false;
-            }
-            //TEMP ... REMOVE
-            if (listingStandard.RadioButton("Machining", currentResearch == "Machining")) {
-                currentResearch = "Machining";
                 researchDropDownActive = false;
             }
             listingStandard.End();
@@ -1084,25 +1126,33 @@ namespace RimAges {
                         settings.SpacerPlantsCost = SpacerPlantsCost;
                         break;
                     case 2:
-                        foreach (var def in GetUsableDefs()) {
-                            RimAges.RemoveResearch(def);
+                        RimAgesResearchChanges.Reset();
+                        //foreach (var def in GetUsableDefs()) {
+                        //    List<ResearchProjectDef> researchList = GetResearchProjectDef(def).researchDef;
+                        //    if (!researchList.NullOrEmpty()) {
+                        //        foreach (ResearchProjectDef researchDef in researchList) { RimAges.clearCacheList.Add(researchDef); }
+                        //    }
+                        //    RimAges.RemoveResearch(def);
 
-                            ResearchProjectDef research;
-                            if (RimAges.defaultDefs.TryGetValue(def, out research)) {
-                                RimAges.AddResearch(def, research);
-                            }
-                        }
+                        //    List<ResearchProjectDef> research;
+                        //    if (RimAges.defaultDefs.TryGetValue(def, out research)) {
+                        //        if (!research.NullOrEmpty()) {
+                        //            RimAges.AddResearch(def, research);
+                        //        }
+                        //    }
+                        //}
                         leftDefDict = UpdateDefDict(null);
                         rightDefDict = UpdateDefDict(currentResearch);
+                        settings.Write();
                         break;
                 }
             }
         }
         public static class RimAgesBackup {
-            public static void SaveBackup() {
+            public static void Save() {
                 RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
 
-                if (settings.ResearchCostBackup == null) { InitResearchCostBackup(); }
+                if (settings.ResearchCostBackup == null) { Init(); }
 
                 if (settings.MedievalCookingCost > 0) { settings.ResearchCostBackup["MedievalCookingCost"] = settings.MedievalCookingCost; }
                 if (settings.MedievalDefensesCost > 0) { settings.ResearchCostBackup["MedievalDefensesCost"] = settings.MedievalDefensesCost; }
@@ -1112,7 +1162,7 @@ namespace RimAges {
                 if (settings.SpacerPlantsCost > 0) { settings.ResearchCostBackup["SpacerPlantsCost"] = settings.SpacerPlantsCost; }
             }
 
-            public static void InitResearchCostBackup() {
+            public static void Init() {
                 RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
                 settings.ResearchCostBackup = new Dictionary<string, int>() 
                 { 
@@ -1123,6 +1173,76 @@ namespace RimAges {
                     {"TrainingTargetsCost", 1000},
                     {"SpacerPlantsCost", 1000}
                 };
+            }
+        }
+
+        public static class RimAgesResearchChanges {
+            public static void Save() {
+                RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
+                ResearchProjectDef currentResearchDef = DefDatabase<ResearchProjectDef>.GetNamed(currentResearch.Replace(" ", ""));
+                List<string> items;
+
+                if (settings.ResearchChanges == null) { Init(settings); settings.Write(); }
+
+                List<Def> defList = GetUsableDefs().Where(x => GetResearchProjectDef(x).researchDef != null).Where(x => GetResearchProjectDef(x).researchDef.Contains(currentResearchDef)).ToList();
+                List<string> defNameList = new List<string>();
+                foreach (Def def in defList) { defNameList.Add(def.defName); }
+
+                foreach (Def def in defList) {
+                    if (settings.ResearchChanges.TryGetValue(currentResearchDef.defName, out items)) {
+                        if (!items.Contains(def.defName)) {
+                            items.Add(def.defName);
+                        }
+                    }
+                }
+                if (settings.ResearchChanges.TryGetValue(currentResearchDef.defName, out items)) {
+                    List<string> removeList = new List<string>();
+                    foreach (string defName in items) {
+                        if (!defNameList.Contains(defName)) {
+                            removeList.Add(defName);
+                        }
+                    }
+                    foreach (string remove in removeList) {
+                        items.Remove(remove);
+                    }
+                }
+            }
+
+            public static void Init(RimAgesSettings settings) {
+                List<ResearchProjectDef> customResearch = DefDatabase<ResearchProjectDef>.AllDefs.Where(x => x.modContentPack.ToStringSafe().ToLower().Replace(" ", "") == "markflynnman.rimages").ToList();
+                settings.ResearchChanges = new Dictionary<string, List<string>>();
+                foreach (var def in customResearch) { 
+                    settings.ResearchChanges.Add(def.defName, new List<string>()); 
+                }
+            }
+
+            public static void Reset() {
+                RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
+                RimAges.clearCacheList = DefDatabase<ResearchProjectDef>.AllDefs.ToHashSet();
+                settings.ResearchChanges.Clear();
+                Init(settings);
+                //settings.Write();
+
+                foreach (var def in GetUsableDefs()) {
+                    RimAges.RemoveResearch(def);
+
+                    List<ResearchProjectDef> research;
+                    if (RimAges.defaultDefs.TryGetValue(def, out research)) {
+                        if (!research.NullOrEmpty()) {
+                            RimAges.AddResearch(def, research);
+                        }
+                    }
+                }
+                //settings.Write();
+            }
+
+            public static void Remove(KeyValuePair<Def, List<ResearchProjectDef>> defDict) {
+                RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
+                foreach (ResearchProjectDef researchDef in defDict.Value) {
+                    if (settings.ResearchChanges.TryGetValue(researchDef.defName, out List<string> items)) {
+                        items.Remove(defDict.Key.defName);
+                    }
+                }
             }
         }
     }

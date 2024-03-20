@@ -1,8 +1,8 @@
-﻿using HarmonyLib;
-using RimWorld;
+﻿using Verse;
+using HarmonyLib;
 using System;
+using RimWorld;
 using System.Collections.Generic;
-using Verse;
 
 namespace RimAges {
     // No research patch
@@ -18,11 +18,16 @@ namespace RimAges {
 
     [HarmonyPatch(typeof(ModSettings), "Write")]
     public class ModSettingsPatch {
+        public static void Prefix() {
+            RimAges.UpdateResearch();
+            RimAgesMod.RimAgesResearchChanges.Save();
+        }
         public static void Postfix() {
             Log.Warning($"{RimAges.modTag} - Settings saved at {DateTime.Now:hh:mm:ss tt}");
             RimAges.ApplyResearchCost();
             RimAges.ApplyEmptyResearch();
-            RimAges.UpdateResearch();
+            RimAgesSettings.leftDefDict = RimAgesMod.UpdateDefDict(null);
+            RimAgesSettings.rightDefDict = RimAgesMod.UpdateDefDict(RimAgesSettings.currentResearch);
         }
     }
 
@@ -30,11 +35,13 @@ namespace RimAges {
     public class ResearchTabClearCache {
         public static void Postfix(ref List<Pair<ResearchPrerequisitesUtility.UnlockedHeader, List<Def>>> __result, ResearchProjectDef project) {
             if (RimAges.clearCacheList.Contains(project)) {
-                Traverse.Create(project).Field("cachedUnlockedDefs").SetValue(null);
+                foreach (ResearchProjectDef research in RimAges.clearCacheList) {
+                    Traverse.Create(research).Field("cachedUnlockedDefs").SetValue(null);
+                }
 
                 Log.Warning($"{RimAges.modTag} - Cache cleared!");
 
-                RimAges.clearCacheList.Remove(project);
+                RimAges.clearCacheList.Clear();
             }
 
             __result = ResearchPrerequisitesUtility.UnlockedDefsGroupedByPrerequisites(project);
