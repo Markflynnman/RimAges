@@ -4,7 +4,6 @@
     <description>...</description>
     <author>Markflynnman</author>
     <supportedVersions>
-		<li>1.4</li>
 		<li>1.5</li>
     </supportedVersions>
     <packageId>markflynnman.rimages</packageId>

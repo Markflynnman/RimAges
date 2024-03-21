@@ -48,22 +48,22 @@ namespace RimAges {
         public static bool rightDefDictInit = false;
 
         public override void ExposeData() {
-            Scribe_Values.Look(ref noResearch, "noResearch", true);
-            Scribe_Values.Look(ref emptyResearch, "emptyResearch", true);
+            Scribe_Values.Look(ref noResearch, "noResearch", true, true);
+            Scribe_Values.Look(ref emptyResearch, "emptyResearch", true, true);
 
-            Scribe_Values.Look(ref MedievalAgeCost, "MedievalAgeCost", 1000);
-            Scribe_Values.Look(ref IndustrialAgeCost, "IndustrialAgeCost", 2000);
-            Scribe_Values.Look(ref SpacerAgeCost, "SpacerAgeCost", 3000);
-            Scribe_Values.Look(ref UltraAgeCost, "UltraAgeCost", 4000);
-            Scribe_Values.Look(ref ArchotechAgeCost, "ArchotechAgeCost", 5000);
-            Scribe_Values.Look(ref MedievalCookingCost, "MedievalCookingCost", 1000);
-            Scribe_Values.Look(ref MedievalDefensesCost, "MedievalDefensesCost", 1000);
-            Scribe_Values.Look(ref MedievalHygieneCost, "MedievalHygieneCost", 1000);
-            Scribe_Values.Look(ref MedievalResearchCost, "MedievalResearchCost", 1000);
-            Scribe_Values.Look(ref TrainingTargetsCost, "TrainingTargetsCost", 1000);
-            Scribe_Values.Look(ref SpacerPlantsCost, "SpacerPlantsCost", 1000);
+            Scribe_Values.Look(ref MedievalAgeCost, "MedievalAgeCost", 1000, true);
+            Scribe_Values.Look(ref IndustrialAgeCost, "IndustrialAgeCost", 2000, true);
+            Scribe_Values.Look(ref SpacerAgeCost, "SpacerAgeCost", 3000, true);
+            Scribe_Values.Look(ref UltraAgeCost, "UltraAgeCost", 4000, true);
+            Scribe_Values.Look(ref ArchotechAgeCost, "ArchotechAgeCost", 5000, true);
+            Scribe_Values.Look(ref MedievalCookingCost, "MedievalCookingCost", 1000, true);
+            Scribe_Values.Look(ref MedievalDefensesCost, "MedievalDefensesCost", 1000, true);
+            Scribe_Values.Look(ref MedievalHygieneCost, "MedievalHygieneCost", 1000, true);
+            Scribe_Values.Look(ref MedievalResearchCost, "MedievalResearchCost", 1000, true);
+            Scribe_Values.Look(ref TrainingTargetsCost, "TrainingTargetsCost", 1000, true);
+            Scribe_Values.Look(ref SpacerPlantsCost, "SpacerPlantsCost", 1000, true);
             Scribe_Collections.Look(ref ResearchCostBackup, "ResearchCostBackup", LookMode.Value, LookMode.Value);
-            Scribe_Collections.Look(ref ResearchChanges, "ResearchChanges", LookMode.Value, LookMode.Value);
+            Scribe_Collections.Look(ref ResearchChanges, "ResearchChanges", LookMode.Value, LookMode.Deep);
 
             base.ExposeData();
         }
@@ -1215,7 +1215,7 @@ namespace RimAges {
                 List<ResearchProjectDef> customResearch = DefDatabase<ResearchProjectDef>.AllDefs.Where(x => x.modContentPack.ToStringSafe().ToLower().Replace(" ", "") == "markflynnman.rimages").ToList();
                 settings.ResearchChanges = new Dictionary<string, List<string>>();
                 foreach (var def in customResearch) {
-                    settings.ResearchChanges.Add(def.defName, new List<string>());
+                    settings.ResearchChanges.Add(def.defName, new List<string> { "null" });
                 }
             }
 

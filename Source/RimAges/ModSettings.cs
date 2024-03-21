@@ -49,20 +49,20 @@ namespace RimAges {
         public static bool rightDefDictInit = false;
 
         public override void ExposeData() {
-            Scribe_Values.Look(ref noResearch, "noResearch", true);
-            Scribe_Values.Look(ref emptyResearch, "emptyResearch", true);
+            Scribe_Values.Look(ref noResearch, "noResearch", true, true);
+            Scribe_Values.Look(ref emptyResearch, "emptyResearch", true, true);
 
-            Scribe_Values.Look(ref MedievalAgeCost, "MedievalAgeCost", 1000);
-            Scribe_Values.Look(ref IndustrialAgeCost, "IndustrialAgeCost", 2000);
-            Scribe_Values.Look(ref SpacerAgeCost, "SpacerAgeCost", 3000);
-            Scribe_Values.Look(ref UltraAgeCost, "UltraAgeCost", 4000);
-            Scribe_Values.Look(ref ArchotechAgeCost, "ArchotechAgeCost", 5000);
-            Scribe_Values.Look(ref MedievalCookingCost, "MedievalCookingCost", 1000);
-            Scribe_Values.Look(ref MedievalDefensesCost, "MedievalDefensesCost", 1000);
-            Scribe_Values.Look(ref MedievalHygieneCost, "MedievalHygieneCost", 1000);
-            Scribe_Values.Look(ref MedievalResearchCost, "MedievalResearchCost", 1000);
-            Scribe_Values.Look(ref TrainingTargetsCost, "TrainingTargetsCost", 1000);
-            Scribe_Values.Look(ref SpacerPlantsCost, "SpacerPlantsCost", 1000);
+            Scribe_Values.Look(ref MedievalAgeCost, "MedievalAgeCost", 1000, true);
+            Scribe_Values.Look(ref IndustrialAgeCost, "IndustrialAgeCost", 2000, true);
+            Scribe_Values.Look(ref SpacerAgeCost, "SpacerAgeCost", 3000, true);
+            Scribe_Values.Look(ref UltraAgeCost, "UltraAgeCost", 4000, true);
+            Scribe_Values.Look(ref ArchotechAgeCost, "ArchotechAgeCost", 5000, true);
+            Scribe_Values.Look(ref MedievalCookingCost, "MedievalCookingCost", 1000, true);
+            Scribe_Values.Look(ref MedievalDefensesCost, "MedievalDefensesCost", 1000, true);
+            Scribe_Values.Look(ref MedievalHygieneCost, "MedievalHygieneCost", 1000, true);
+            Scribe_Values.Look(ref MedievalResearchCost, "MedievalResearchCost", 1000, true);
+            Scribe_Values.Look(ref TrainingTargetsCost, "TrainingTargetsCost", 1000, true);
+            Scribe_Values.Look(ref SpacerPlantsCost, "SpacerPlantsCost", 1000, true);
             Scribe_Collections.Look(ref ResearchCostBackup, "ResearchCostBackup", LookMode.Value, LookMode.Value);
             Scribe_Collections.Look(ref ResearchChanges, "ResearchChanges", LookMode.Value, LookMode.Value);
 
@@ -1127,20 +1127,6 @@ namespace RimAges {
                         break;
                     case 2:
                         RimAgesResearchChanges.Reset();
-                        //foreach (var def in GetUsableDefs()) {
-                        //    List<ResearchProjectDef> researchList = GetResearchProjectDef(def).researchDef;
-                        //    if (!researchList.NullOrEmpty()) {
-                        //        foreach (ResearchProjectDef researchDef in researchList) { RimAges.clearCacheList.Add(researchDef); }
-                        //    }
-                        //    RimAges.RemoveResearch(def);
-
-                        //    List<ResearchProjectDef> research;
-                        //    if (RimAges.defaultDefs.TryGetValue(def, out research)) {
-                        //        if (!research.NullOrEmpty()) {
-                        //            RimAges.AddResearch(def, research);
-                        //        }
-                        //    }
-                        //}
                         leftDefDict = UpdateDefDict(null);
                         rightDefDict = UpdateDefDict(currentResearch);
                         settings.Write();
@@ -1152,7 +1138,7 @@ namespace RimAges {
             public static void Save() {
                 RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
 
-                if (settings.ResearchCostBackup == null) { Init(); }
+                if (settings.ResearchCostBackup.NullOrEmpty()) { Init(); }
 
                 if (settings.MedievalCookingCost > 0) { settings.ResearchCostBackup["MedievalCookingCost"] = settings.MedievalCookingCost; }
                 if (settings.MedievalDefensesCost > 0) { settings.ResearchCostBackup["MedievalDefensesCost"] = settings.MedievalDefensesCost; }

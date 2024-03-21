@@ -28,7 +28,8 @@ namespace RimAges {
             InitTechAgeResearch();
             InitExcludeRequirement();
 
-            if (defaultDefs.NullOrEmpty()) {
+            // Init defaultDefs (DONT MODIFY ANY RESEARCH BEFORE THIS)
+            if (defaultDefs.NullOrEmpty()) { 
                 foreach (Def def in RimAgesMod.GetUsableDefs()) {
                     var research = RimAgesMod.GetResearchProjectDef(def);
                     if (research.valid) {
@@ -36,6 +37,8 @@ namespace RimAges {
                     }
                 }
             }
+
+            LoadResearchSettings();
 
             var tabs = DefDatabase<ResearchTabDef>.AllDefsListForReading.ListFullCopy();
             tabs = ManageTabs(tabs);
@@ -47,18 +50,18 @@ namespace RimAges {
             ResearchPrerequisites(researchDefs, tabs);
 
             // Add research prerequisite to thing def
-            DefDatabase<ThingDef>.GetNamed("SimpleResearchBench").researchPrerequisites.Add(DefDatabase<ResearchProjectDef>.GetNamed("MedievalResearch"));
+            //DefDatabase<ThingDef>.GetNamed("SimpleResearchBench").researchPrerequisites.Add(DefDatabase<ResearchProjectDef>.GetNamed("MedievalResearch"));
 
-            if (DefDatabase<TerrainDef>.GetNamed("WoodPlankFloor").researchPrerequisites != null) {
-                Log.Warning($"{modTag} - researchPrerequisites found");
-                DefDatabase<TerrainDef>.GetNamed("WoodPlankFloor").researchPrerequisites.Add(DefDatabase<ResearchProjectDef>.GetNamed("ArchotechAge"));
-            }
-            else {
-                Log.Warning($"{modTag} - researchPrerequisites null");
-            }
+            //if (DefDatabase<TerrainDef>.GetNamed("WoodPlankFloor").researchPrerequisites != null) {
+            //    Log.Warning($"{modTag} - researchPrerequisites found");
+            //    DefDatabase<TerrainDef>.GetNamed("WoodPlankFloor").researchPrerequisites.Add(DefDatabase<ResearchProjectDef>.GetNamed("ArchotechAge"));
+            //}
+            //else {
+            //    Log.Warning($"{modTag} - researchPrerequisites null");
+            //}
 
             // Add research prerequisite to plant def
-            DefDatabase<ThingDef>.GetNamed("Plant_Devilstrand").plant.sowResearchPrerequisites.Clear();
+            //DefDatabase<ThingDef>.GetNamed("Plant_Devilstrand").plant.sowResearchPrerequisites.Clear();
             //DefDatabase<ThingDef>.GetNamed("Plant_Devilstrand").plant.sowResearchPrerequisites.Add(DefDatabase<ResearchProjectDef>.GetNamed("SpacerPlants"));
 
             ApplyEmptyResearch();
@@ -440,6 +443,21 @@ namespace RimAges {
                 case "Verse.RecipeDef":
                     DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite = researchDefs[0];
                     break;
+            }
+        }
+
+        public static void LoadResearchSettings() {
+            RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
+            if (settings.ResearchChanges == null) { RimAgesMod.RimAgesResearchChanges.Init(settings); settings.Write(); }
+            var researchChanges = settings.ResearchChanges;
+            foreach (var research in researchChanges) {
+                if (!research.Value.NullOrEmpty()) {
+                    foreach (string defName in research.Value) {
+                        Def def = RimAgesMod.GetUsableDefs().Where(x => x.defName == defName).Distinct().ToList()[0];
+                        RemoveResearch(def);
+                        AddResearch(def, new List<ResearchProjectDef> { DefDatabase<ResearchProjectDef>.GetNamed(research.Key) });
+                    }
+                }
             }
         }
 
