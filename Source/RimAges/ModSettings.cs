@@ -144,11 +144,12 @@ namespace RimAges {
             List<Def> usableDefs = new List<Def>();
             List<string> blacklist = new List<string> { "Sandstone_Smooth", "Granite_Smooth", "Limestone_Smooth", "Slate_Smooth", "Marble_Smooth" };
             //!x.IsBlueprint && !x.IsFrame && !x.isUnfinishedThing && (x.category == ThingCategory.Item || x.category == ThingCategory.Building || x.category == ThingCategory.Plant || x.category == ThingCategory.Pawn)))
-            usableDefs = usableDefs.Concat(DefDatabase<ThingDef>.AllDefs.Where(x => !x.IsBlueprint && !x.isMechClusterThreat && x.BuildableByPlayer && (x.category == ThingCategory.Building || x.category == ThingCategory.Plant))) /////
-                                   .Concat(DefDatabase<TerrainDef>.AllDefs.Where(x => x.IsFloor && !blacklist.Contains(x.defName)))
-                                   //.Concat(DefDatabase<ThingDef>.AllDefs.Where(x => x.category == ThingCategory.Item && x.recipeMaker != null))
-                                   .Concat(DefDatabase<RecipeDef>.AllDefs)
+            usableDefs = usableDefs.Concat(DefDatabase<ThingDef>.AllDefs.Where(x => !x.IsBlueprint && !x.isMechClusterThreat && x.BuildableByPlayer && x.category == ThingCategory.Building)) // Building
+                                   .Concat(DefDatabase<ThingDef>.AllDefs.Where(x => x.category == ThingCategory.Plant)) // Plants
+                                   .Concat(DefDatabase<TerrainDef>.AllDefs.Where(x => x.IsFloor && !blacklist.Contains(x.defName))) // Floors
+                                   .Concat(DefDatabase<RecipeDef>.AllDefs) // Recipes
                                    .Distinct().ToList(); // TODO: Filter out defs that are not useable by players to prevent "no researchPrerequisite" error logs... it causes massive lag
+            //.Concat(DefDatabase<ThingDef>.AllDefs.Where(x => x.category == ThingCategory.Item && x.recipeMaker != null))
             //allDefs = allDefs.Concat(DefDatabase<ThingDef>.AllDefs.Where(x => x.category == ThingCategory.Item && x.recipeMaker != null))
             //                     .Distinct().ToList();
             return usableDefs;
@@ -399,7 +400,7 @@ namespace RimAges {
                     Def keyDef = null;
                     List<ResearchProjectDef> valueDef;
                     bool valid;
-                    (valueDef, valid)  = GetResearchProjectDef(currentDef);
+                    (valueDef, valid) = GetResearchProjectDef(currentDef);
                     if (valid) { // True if current def has a researchPrerequisite(s) tag
                         keyDef = currentDef;
                     }
@@ -471,14 +472,30 @@ namespace RimAges {
                         }
                     }
                     else if (DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker != null) {
-                        if (DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker.researchPrerequisite != null) {
-                            return (new List<ResearchProjectDef>{DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker.researchPrerequisite}, true);
+                        try {
+                            List<ResearchProjectDef> researchList = DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker.researchPrerequisites;
+                            if (researchList.Count != 0) {
+                                return (researchList.Distinct().ToList(), true);
+                            }
+                        }
+                        catch {
+                            if (DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker.researchPrerequisite != null) {
+                                return (new List<ResearchProjectDef> { DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker.researchPrerequisite }, true);
+                            }
                         }
                     }
                     break;
                 case "Verse.RecipeDef":
-                    if (DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite != null) { 
-                        return (new List<ResearchProjectDef>{DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite}, true) ;
+                    try {
+                        List<ResearchProjectDef> researchList = DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisites;
+                        if (researchList.Count != 0) {
+                            return (researchList.Distinct().ToList(), true);
+                        }
+                    }
+                    catch (Exception) {
+                        if (DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite != null) {
+                            return (new List<ResearchProjectDef> { DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite }, true);
+                        }
                     }
                     break;
 #pragma warning restore 0168
@@ -523,19 +540,29 @@ namespace RimAges {
                                 }
                                 else if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).category == ThingCategory.Item && DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker != null) {
                                     try {
-                                        if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker.researchPrerequisite == null) { keyDef = currentDef; }
+                                        if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker.researchPrerequisites.Count == 0) { keyDef = currentDef; }
                                     }
-                                    catch (Exception e) {
-                                        Log.Warning($"[RimAges] ERROR: {defList[i].defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.");
+                                    catch {
+                                        try {
+                                            if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker.researchPrerequisite == null) { keyDef = currentDef; }
+                                        }
+                                        catch (Exception e) {
+                                            Log.Warning($"[RimAges] ERROR: {defList[i].defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.");
+                                        }
                                     }
                                 }
                                 break;
                             case "Verse.RecipeDef":
                                 try {
-                                    if (DefDatabase<RecipeDef>.GetNamed(currentDef.defName).researchPrerequisite == null) { keyDef = currentDef; }
+                                    if (DefDatabase<RecipeDef>.GetNamed(currentDef.defName).researchPrerequisites.Count == 0) { keyDef = currentDef; }
                                 }
-                                catch (Exception e) {
-                                    Log.Warning($"[RimAges] ERROR: {defList[i].defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.");
+                                catch {
+                                    try {
+                                        if (DefDatabase<RecipeDef>.GetNamed(currentDef.defName).researchPrerequisite == null) { keyDef = currentDef; }
+                                    }
+                                    catch (Exception e) {
+                                        Log.Warning($"[RimAges] ERROR: {defList[i].defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.");
+                                    }
                                 }
                                 break;
 #pragma warning restore 0168
@@ -582,22 +609,40 @@ namespace RimAges {
                                     //Log.Error($"[RimAges] ERROR: {currentDef.defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.\n{e}");
                                 }
                             }
-                            else if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker != null) { 
-                                keyDef = currentDef; 
-                                if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker.researchPrerequisite != null) {
-                                    valueDef.Add(DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker.researchPrerequisite);
+                            else if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker != null) {
+                                try {
+                                    List<ResearchProjectDef> researchList = DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker.researchPrerequisites;
+                                    keyDef = currentDef;
+                                    if (researchList.Count != 0) {
+                                        valueDef = researchList.Distinct().ToList();
+                                    }
+                                }
+                                catch {
+                                    keyDef = currentDef;
+                                    if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker.researchPrerequisite != null) {
+                                        valueDef.Add(DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker.researchPrerequisite);
+                                    }
                                 }
                             }
                             break;
                         case "Verse.RecipeDef":
-                            keyDef = currentDef;
                             try {
-                                if (DefDatabase<RecipeDef>.GetNamed(currentDef.defName).researchPrerequisite != null) { 
-                                    valueDef.Add(DefDatabase<RecipeDef>.GetNamed(currentDef.defName).researchPrerequisite);
-                                    }
+                                List<ResearchProjectDef> researchList = DefDatabase<RecipeDef>.GetNamed(currentDef.defName).researchPrerequisites;
+                                keyDef = currentDef;
+                                if (researchList.Count != 0) {
+                                    valueDef = researchList.Distinct().ToList();
+                                }
                             }
-                            catch (Exception e) {
-                                Log.Warning($"[RimAges] ERROR: {defList[i].defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.");
+                            catch {
+                                keyDef = currentDef;
+                                try {
+                                    if (DefDatabase<RecipeDef>.GetNamed(currentDef.defName).researchPrerequisite != null) {
+                                        valueDef.Add(DefDatabase<RecipeDef>.GetNamed(currentDef.defName).researchPrerequisite);
+                                    }
+                                }
+                                catch (Exception e) {
+                                    Log.Warning($"[RimAges] ERROR: {defList[i].defName} does not have a researchPrerequisites tag. You can safely continue but it will not be in the def list.");
+                                }
                             }
                             break;
 #pragma warning restore 0168
@@ -712,7 +757,7 @@ namespace RimAges {
                         else if (label.Contains(search) || defName.Contains(search) || defType.Contains(search) || modTag.Contains(search)) { searchedDefs.Add(item.Key, item.Value); }
                         else {
                             foreach (string research in researchNames) {
-                                if (research.Contains(search)) { searchedDefs.Add(item.Key, item.Value); }
+                                if (research.Contains(search)) { searchedDefs[item.Key] = item.Value; }
                             }
                         }
                     }
@@ -741,6 +786,7 @@ namespace RimAges {
                 }
                 search = search.Replace(" ", "");
                 foreach (var item in defDict) {
+                    //if (item.Key.defName == "ExtractOvum") { Log.Error($"{item.Value.Count}"); }
                     string label = item.Key.label.ToLower().Replace(" ", "");
                     string defName = item.Key.defName.ToLower().Replace(" ", "");
                     string defType = item.Key.GetType().ToString().ToLower().Replace("verse.", "");
@@ -795,7 +841,7 @@ namespace RimAges {
                     else if (label.Contains(search) || defName.Contains(search) || defType.Contains(search) || modTag.Contains(search)) { searchedDefs.Add(item.Key, item.Value); }
                     else {
                         foreach(string research in researchNames) {
-                            if (research.Contains(search)) { searchedDefs.Add(item.Key, item.Value); }
+                            if (research.Contains(search)) { searchedDefs[item.Key] = item.Value; }
                         }
                     }
                 }

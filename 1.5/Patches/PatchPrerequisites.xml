@@ -37,6 +37,16 @@
                 </value>
             </li>
 			
+			<!-- Fix Locust Armor -->
+			<!-- Bug that makes it always need ReconArmor research occurs when its research tag is researchPrerequisites. Might be due to parent def? -->
+			<!-- Need to find different workaround -->
+			<li Class="PatchOperationReplace">
+                <xpath>Defs[ThingDef]/ThingDef[defName="Apparel_ArmorLocust"]/recipeMaker/researchPrerequisites</xpath>
+				<value>
+					<researchPrerequisite>JumpPack</researchPrerequisite>
+				</value>
+			</li>
+			
 			<!-- Fix Tribal Headdress 
 			<li Class="PatchOperationRemove">
                 <xpath>Defs[ThingDef]/ThingDef[defName="Apparel_TribalHeaddress"]/recipeMaker/researchPrerequisite</xpath>

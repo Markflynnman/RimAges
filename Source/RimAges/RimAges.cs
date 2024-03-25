@@ -64,6 +64,26 @@ namespace RimAges {
             //DefDatabase<ThingDef>.GetNamed("Plant_Devilstrand").plant.sowResearchPrerequisites.Clear();
             //DefDatabase<ThingDef>.GetNamed("Plant_Devilstrand").plant.sowResearchPrerequisites.Add(DefDatabase<ResearchProjectDef>.GetNamed("SpacerPlants"));
 
+            string testDef = "Make_Apparel_ArmorLocust";
+            Log.Error($"{modTag} - {testDef}");
+            try {
+                Log.Error($"{modTag} - {DefDatabase<RecipeDef>.GetNamed(testDef).researchPrerequisites.Count}");
+                foreach (Def def in DefDatabase<RecipeDef>.GetNamed(testDef).researchPrerequisites) {
+                    Log.Error($"{modTag} - {def.defName}");
+                }
+                Log.Error($"{modTag} - researchPrerequisites");
+            }
+            catch (Exception) {
+                if (DefDatabase<RecipeDef>.GetNamed(testDef).researchPrerequisite != null) { 
+                    Log.Error($"{modTag} - 1");
+                    Log.Error($"{modTag} - {DefDatabase<RecipeDef>.GetNamed(testDef).researchPrerequisite}");
+                }
+                else { Log.Error($"{modTag} - 0"); }
+                Log.Error($"{modTag} - researchPrerequisite");
+            }
+
+
+
             ApplyEmptyResearch();
         }
 
@@ -393,11 +413,22 @@ namespace RimAges {
                         }
                     }
                     else if (DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker != null) {
-                        DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker.researchPrerequisite = null;
+                        Log.Error($"{modTag} - {def.defName}");
+                        try {
+                            DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker.researchPrerequisites.Clear();
+                        }
+                        catch {
+                            DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker.researchPrerequisite = null;
+                        }
                     }
                     break;
                 case "Verse.RecipeDef":
-                    DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite = null;
+                    try {
+                        DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisites.Clear();
+                    }
+                    catch {
+                        DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite = null;
+                    }
                     break;
             }
         }
@@ -437,11 +468,25 @@ namespace RimAges {
                         }
                     }
                     else if (DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker != null) {
-                        DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker.researchPrerequisite = researchDefs[0];
+                        try {
+                            foreach (ResearchProjectDef researchDef in researchDefs) {
+                                DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker.researchPrerequisites.Add(researchDef);
+                            }
+                        }
+                        catch {
+                            DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker.researchPrerequisite = researchDefs[0];
+                        }
                     }
                     break;
                 case "Verse.RecipeDef":
-                    DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite = researchDefs[0];
+                    try {
+                        foreach (ResearchProjectDef researchDef in researchDefs) {
+                            DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisites.Add(researchDef);
+                        }
+                    }
+                    catch {
+                        DefDatabase<RecipeDef>.GetNamed(def.defName).researchPrerequisite = researchDefs[0];
+                    }
                     break;
             }
         }
@@ -453,9 +498,14 @@ namespace RimAges {
             foreach (var research in researchChanges) {
                 if (!research.Value.NullOrEmpty()) {
                     foreach (string defName in research.Value) {
-                        Def def = RimAgesMod.GetUsableDefs().Where(x => x.defName == defName).Distinct().ToList()[0];
-                        RemoveResearch(def);
-                        AddResearch(def, new List<ResearchProjectDef> { DefDatabase<ResearchProjectDef>.GetNamed(research.Key) });
+                        try {
+                            Def def = RimAgesMod.GetUsableDefs().Where(x => x.defName == defName).Distinct().ToList()[0];
+                            RemoveResearch(def);
+                            AddResearch(def, new List<ResearchProjectDef> { DefDatabase<ResearchProjectDef>.GetNamed(research.Key) });
+                        }
+                        catch (Exception) {
+                            Log.Warning($"{modTag} - Could not load {defName}. The mod that adds it may be disabled.");
+                        }
                     }
                 }
             }
