@@ -9,6 +9,7 @@ using System.Security.Cryptography;
 using System.Diagnostics.Eventing.Reader;
 using Verse.AI;
 using LudeonTK;
+using static RimWorld.FleshTypeDef;
 
 namespace RimAges {
     public class RimAgesSettings : ModSettings {
@@ -662,7 +663,7 @@ namespace RimAges {
             Dictionary<Def, List<ResearchProjectDef>> searchedDefs = new Dictionary<Def, List<ResearchProjectDef>>();
             string search = searchFilter.ToLower();
             string[] searchWords = search.Split(',');
-            List<string> keywords = new List<string> { "#name", "#def", "#type", "#research", "#mod" };
+            List<string> keywords = new List<string> { "#name", "#n", "#def", "#d", "#type", "#t", "#research", "#r", "#mod", "#m" };
 
             if (searchWords.Length > 1) { // Multiple Terms
                 List<string> foundKeywords = new List<string>();
@@ -715,19 +716,19 @@ namespace RimAges {
                         else { researchNames.Add("nullnonenotfound"); } // allows terms: null / none / not found
                         if (foundKeywords[i] != null) {
                             switch (foundKeywords[i]) {
-                                case "#name":
+                                case "#name": case "#n":
                                     if (modifier == "!") { if (!(label.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
                                     else { if (label.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
                                     break;
-                                case "#def":
+                                case "#def": case "#d":
                                     if (modifier == "!") { if (!(defName.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
                                     else { if (defName.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
                                     break;
-                                case "#type":
+                                case "#type": case "#t":
                                     if (modifier == "!") { if (!(defType.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
                                     else { if (defType.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
                                     break;
-                                case "#research":
+                                case "#research": case "#r":
                                     if (modifier == "!") {
                                         bool found = false;
                                         foreach (string research in researchNames) {
@@ -736,12 +737,12 @@ namespace RimAges {
                                         if (!found) { searchedDefs.Add(item.Key, item.Value); }
                                     }
                                     else {
-                                        if (researchNames.Contains(search)) {
-                                            searchedDefs.Add(item.Key, item.Value);
+                                        foreach (string research in researchNames) {
+                                            if (research.Contains(search)) { searchedDefs[item.Key] = item.Value; break; }
                                         }
                                     }
                                     break;
-                                case "#mod":
+                                case "#mod": case "#m":
                                     if (modifier == "!") { if (!(modTag.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
                                     else { if (modTag.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
                                     break;
@@ -800,32 +801,33 @@ namespace RimAges {
                     else { researchNames.Add("nullnonenotfound"); } // allows terms: null / none / not found
                     if (foundKeyword != null) {
                         switch (foundKeyword) {
-                            case "#name":
+                            case "#name": case "#n":
                                 if (modifier == "!") { if (!(label.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
                                 else { if (label.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
                                 break;
-                            case "#def":
+                            case "#def": case "#d":
                                 if (modifier == "!") { if (!(defName.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
                                 else { if (defName.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
                                 break;
-                            case "#type":
+                            case "#type": case "#t":
                                 if (modifier == "!") { if (!(defType.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
                                 else { if (defType.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
                                 break;
-                            case "#research":
+                            case "#research": case "#r":
                                 if (modifier == "!") {
                                     bool found = false;
                                     foreach (string research in researchNames) {
-                                        if ((research.Contains(search))) { found = true; break; }
+                                        if (research.Contains(search)) { found = true; break; }
                                     }
                                     if (!found) { searchedDefs.Add(item.Key, item.Value); }
                                 }
-                                else { 
-                                    if (researchNames.Contains(search)) { searchedDefs.Add(item.Key, item.Value); 
-                                    } 
+                                else {
+                                    foreach (string research in researchNames) {
+                                        if (research.Contains(search)) { searchedDefs[item.Key] = item.Value; break; }
+                                    }
                                 }
                                 break;
-                            case "#mod":
+                            case "#mod": case "#m":
                                 if (modifier == "!") { if (!(modTag.Contains(search))) { searchedDefs.Add(item.Key, item.Value); } }
                                 else { if (modTag.Contains(search)) { searchedDefs.Add(item.Key, item.Value); } }
                                 break;
