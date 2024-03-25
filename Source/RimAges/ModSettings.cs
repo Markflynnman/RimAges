@@ -147,12 +147,23 @@ namespace RimAges {
             //!x.IsBlueprint && !x.IsFrame && !x.isUnfinishedThing && (x.category == ThingCategory.Item || x.category == ThingCategory.Building || x.category == ThingCategory.Plant || x.category == ThingCategory.Pawn)))
             usableDefs = usableDefs.Concat(DefDatabase<ThingDef>.AllDefs.Where(x => !x.IsBlueprint && !x.isMechClusterThreat && x.BuildableByPlayer && x.category == ThingCategory.Building)) // Building
                                    .Concat(DefDatabase<ThingDef>.AllDefs.Where(x => x.category == ThingCategory.Plant)) // Plants
-                                   .Concat(DefDatabase<TerrainDef>.AllDefs.Where(x => x.IsFloor && !blacklist.Contains(x.defName))) // Floors
+                                   .Concat(DefDatabase<TerrainDef>.AllDefs.Where(x => x.IsFloor && !x.defName.Contains("Carpet") && !blacklist.Contains(x.defName))) // Floors
                                    .Concat(DefDatabase<RecipeDef>.AllDefs) // Recipes
                                    .Distinct().ToList(); // TODO: Filter out defs that are not useable by players to prevent "no researchPrerequisite" error logs... it causes massive lag
             //.Concat(DefDatabase<ThingDef>.AllDefs.Where(x => x.category == ThingCategory.Item && x.recipeMaker != null))
             //allDefs = allDefs.Concat(DefDatabase<ThingDef>.AllDefs.Where(x => x.category == ThingCategory.Item && x.recipeMaker != null))
             //                     .Distinct().ToList();
+
+            List<Def> carpetList = new List<Def>(); // Only get one of each carpet type
+            foreach (Def carpet in DefDatabase<TerrainDef>.AllDefs.Where(x => x.IsFloor && x.defName.Contains("Carpet"))) {
+                bool inList = false;
+                foreach (Def addedCarpet in carpetList) {
+                    if (addedCarpet.label.Split('(')[0] == carpet.label.Split('(')[0]) { inList = true; break; }
+                }
+                if (!inList) { carpetList.Add(carpet); }
+            }
+            usableDefs = usableDefs.Concat(carpetList).Distinct().ToList();
+
             return usableDefs;
         }
 
@@ -899,7 +910,12 @@ namespace RimAges {
         public static void DrawListItem(Rect rect, Def currentDef, List<ResearchProjectDef> researchDef) {
             Rect labelItemRect = rect.ContractedBy(5);
             labelItemRect.height = 22;
-            Widgets.Label(labelItemRect, $"{currentDef.label.CapitalizeFirst()}");
+            if (currentDef.defName.Contains("Carpet")) { // Stops every color carpet being listed
+                Widgets.Label(labelItemRect, $"{currentDef.label.Split('(')[0].CapitalizeFirst().Trim()}");
+            }
+            else {
+                Widgets.Label(labelItemRect, $"{currentDef.label.CapitalizeFirst()}");
+            }
 
             string mod = currentDef.modContentPack.ToStringSafe();
 
@@ -914,14 +930,30 @@ namespace RimAges {
             Text.Anchor = TextAnchor.UpperRight;
             if (!researchDef.NullOrEmpty()) {
                 if (researchDef.Count > 1) {
-                    Widgets.Label(researchItemRect, $"{researchDef[0]}+{researchDef.Count-1}");
+                    Widgets.Label(researchItemRect, $"{researchDef[0]}+{researchDef.Count - 1}");
                 }
                 else {
                     Widgets.Label(researchItemRect, $"{researchDef[0]}");
                 }
             }
             else if ($"{currentDef.GetType()}" == "Verse.ThingDef") {
-                if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker != null || DefDatabase<ThingDef>.GetNamed(currentDef.defName).researchPrerequisites != null) {
+                if (DefDatabase<ThingDef>.GetNamed(currentDef.defName).recipeMaker != null || DefDatabase<ThingDef>.GetNamed(currentDef.defName).researchPrerequisites.NullOrEmpty()) {
+                    Widgets.Label(researchItemRect, $"None");
+                }
+                else {
+                    Widgets.Label(researchItemRect, $"Not Found");
+                }
+            }
+            else if ($"{currentDef.GetType()}" == "Verse.RecipeDef") {
+                if (DefDatabase<RecipeDef>.GetNamed(currentDef.defName).researchPrerequisites.NullOrEmpty()) {
+                    Widgets.Label(researchItemRect, $"None");
+                }
+                else {
+                    Widgets.Label(researchItemRect, $"Not Found");
+                }
+            }
+            else if ($"{currentDef.GetType()}" == "Verse.TerrainDef") {
+                if (DefDatabase<TerrainDef>.GetNamed(currentDef.defName).researchPrerequisites.NullOrEmpty()) {
                     Widgets.Label(researchItemRect, $"None");
                 }
                 else {

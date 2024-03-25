@@ -65,24 +65,22 @@ namespace RimAges {
             //DefDatabase<ThingDef>.GetNamed("Plant_Devilstrand").plant.sowResearchPrerequisites.Add(DefDatabase<ResearchProjectDef>.GetNamed("SpacerPlants"));
 
             string testDef = "Make_Apparel_ArmorLocust";
-            Log.Error($"{modTag} - {testDef}");
+            Log.Warning($"{modTag} - {testDef}");
             try {
-                Log.Error($"{modTag} - {DefDatabase<RecipeDef>.GetNamed(testDef).researchPrerequisites.Count}");
+                Log.Warning($"{modTag} - {DefDatabase<RecipeDef>.GetNamed(testDef).researchPrerequisites.Count}");
                 foreach (Def def in DefDatabase<RecipeDef>.GetNamed(testDef).researchPrerequisites) {
-                    Log.Error($"{modTag} - {def.defName}");
+                    Log.Warning($"{modTag} - {def.defName}");
                 }
-                Log.Error($"{modTag} - researchPrerequisites");
+                Log.Warning($"{modTag} - researchPrerequisites");
             }
             catch (Exception) {
                 if (DefDatabase<RecipeDef>.GetNamed(testDef).researchPrerequisite != null) { 
-                    Log.Error($"{modTag} - 1");
-                    Log.Error($"{modTag} - {DefDatabase<RecipeDef>.GetNamed(testDef).researchPrerequisite}");
+                    Log.Warning($"{modTag} - 1");
+                    Log.Warning($"{modTag} - {DefDatabase<RecipeDef>.GetNamed(testDef).researchPrerequisite}");
                 }
-                else { Log.Error($"{modTag} - 0"); }
-                Log.Error($"{modTag} - researchPrerequisite");
+                else { Log.Warning($"{modTag} - 0"); }
+                Log.Warning($"{modTag} - researchPrerequisite");
             }
-
-
 
             ApplyEmptyResearch();
         }
@@ -413,7 +411,6 @@ namespace RimAges {
                         }
                     }
                     else if (DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker != null) {
-                        Log.Error($"{modTag} - {def.defName}");
                         try {
                             DefDatabase<ThingDef>.GetNamed(def.defName).recipeMaker.researchPrerequisites.Clear();
                         }

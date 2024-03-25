@@ -31,9 +31,10 @@
                 </value>
             </li>
 			<li Class="PatchOperationAdd">
-                <xpath>Defs[RecipeDef]/RecipeDef[not(researchPrerequisite)]</xpath>
+                <xpath>Defs[RecipeDef]/RecipeDef[not(researchPrerequisites)]</xpath>
                 <value>
-                    <researchPrerequisite></researchPrerequisite>
+                    <researchPrerequisites>
+					</researchPrerequisites>
                 </value>
             </li>
 			
