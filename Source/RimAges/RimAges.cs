@@ -13,8 +13,11 @@ namespace RimAges {
         public static string modTag = "[RimAges]";
         public static List<ResearchProjectDef> techAgeResearch = new List<ResearchProjectDef>();
         public static List<ResearchProjectDef> excludeRequirement = new List<ResearchProjectDef>();
-        public static Dictionary<Def, List<ResearchProjectDef>> defaultDefs = new Dictionary<Def, List<ResearchProjectDef>>();
+        public static readonly Dictionary<Def, List<ResearchProjectDef>> defaultDefs = new Dictionary<Def, List<ResearchProjectDef>>();
+        public static readonly Dictionary<ResearchProjectDef, float> defaultResearch = new Dictionary<ResearchProjectDef, float>();
         public static HashSet<ResearchProjectDef> clearCacheList = new HashSet<ResearchProjectDef>();
+        public static bool noResearch = new bool();
+        public static bool emptyResearch = new bool();
 
         public static bool emptyCache = false;
 
@@ -37,6 +40,8 @@ namespace RimAges {
                     }
                 }
             }
+
+            defaultResearch = DefDatabase<ResearchProjectDef>.AllDefsListForReading.ToDictionary(x => x, x => x.Cost);
 
             LoadResearchSettings();
 
@@ -82,6 +87,9 @@ namespace RimAges {
                 Log.Warning($"{modTag} - researchPrerequisite");
             }
 
+            RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
+            noResearch = settings.noResearch;
+            emptyResearch = settings.emptyResearch;
             ApplyEmptyResearch();
         }
 
@@ -243,82 +251,95 @@ namespace RimAges {
 
         public static void ApplyResearchCost() {
             RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
-            DefDatabase<ResearchProjectDef>.GetNamed("MedievalAge").baseCost = (settings.MedievalAgeCost);
-            DefDatabase<ResearchProjectDef>.GetNamed("IndustrialAge").baseCost = (settings.IndustrialAgeCost);
-            DefDatabase<ResearchProjectDef>.GetNamed("SpacerAge").baseCost = (settings.SpacerAgeCost);
-            DefDatabase<ResearchProjectDef>.GetNamed("UltraAge").baseCost = (settings.UltraAgeCost);
-            DefDatabase<ResearchProjectDef>.GetNamed("ArchotechAge").baseCost = (settings.ArchotechAgeCost);
-            DefDatabase<ResearchProjectDef>.GetNamed("MedievalCooking").baseCost = (settings.MedievalCookingCost);
-            DefDatabase<ResearchProjectDef>.GetNamed("MedievalDefenses").baseCost = (settings.MedievalDefensesCost);
-            DefDatabase<ResearchProjectDef>.GetNamed("MedievalHygiene").baseCost = (settings.MedievalHygieneCost);
-            DefDatabase<ResearchProjectDef>.GetNamed("MedievalResearch").baseCost = (settings.MedievalResearchCost);
-            DefDatabase<ResearchProjectDef>.GetNamed("TrainingTargets").baseCost = (settings.TrainingTargetsCost);
-            DefDatabase<ResearchProjectDef>.GetNamed("SpacerPlants").baseCost = (settings.SpacerPlantsCost);
+            DefDatabase<ResearchProjectDef>.GetNamed("MedievalAge").baseCost = settings.MedievalAgeCost;
+            DefDatabase<ResearchProjectDef>.GetNamed("IndustrialAge").baseCost = settings.IndustrialAgeCost;
+            DefDatabase<ResearchProjectDef>.GetNamed("SpacerAge").baseCost = settings.SpacerAgeCost;
+            DefDatabase<ResearchProjectDef>.GetNamed("UltraAge").baseCost = settings.UltraAgeCost;
+            DefDatabase<ResearchProjectDef>.GetNamed("ArchotechAge").baseCost = settings.ArchotechAgeCost;
+            DefDatabase<ResearchProjectDef>.GetNamed("MedievalCooking").baseCost = settings.MedievalCookingCost;
+            DefDatabase<ResearchProjectDef>.GetNamed("MedievalDefenses").baseCost = settings.MedievalDefensesCost;
+            DefDatabase<ResearchProjectDef>.GetNamed("MedievalHygiene").baseCost = settings.MedievalHygieneCost;
+            DefDatabase<ResearchProjectDef>.GetNamed("MedievalResearch").baseCost = settings.MedievalResearchCost;
+            DefDatabase<ResearchProjectDef>.GetNamed("TrainingTargets").baseCost = settings.TrainingTargetsCost;
+            DefDatabase<ResearchProjectDef>.GetNamed("SpacerPlants").baseCost = settings.SpacerPlantsCost;
         }
 
         public static void ApplyEmptyResearch() {
             RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
             RimAgesMod.RimAgesBackup.Save();
-            if (settings.emptyResearch == false) {
+            if (emptyResearch == false) {
                 var res = DefDatabase<ResearchProjectDef>.AllDefsListForReading.ListFullCopy();
                 foreach (var def in res) {
-                    if (def.modContentPack.ToString() == "markflynnman.rimages" && techAgeResearch.Contains(def) == false) {
+                    if (def.modContentPack.ToString() == "markflynnman.rimages") {
+                        if (techAgeResearch.Contains(def)) { continue; }
                         Log.Warning($"{modTag} - {def.defName}: {def.UnlockedDefs.Count}");
                         if (def.UnlockedDefs.Count == 0) {
                             switch (def.defName) {
                                 case "MedievalCooking":
-                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalCooking").baseCost = (settings.MedievalCookingCost);
                                     settings.MedievalCookingCost = 0;
+                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalCooking").baseCost = settings.MedievalCookingCost;
                                     break;
                                 case "MedievalDefenses":
-                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalDefenses").baseCost = (settings.MedievalDefensesCost);
                                     settings.MedievalDefensesCost = 0;
+                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalDefenses").baseCost = settings.MedievalDefensesCost;
                                     break;
                                 case "MedievalHygiene":
-                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalHygiene").baseCost = (settings.MedievalHygieneCost);
                                     settings.MedievalHygieneCost = 0;
+                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalHygiene").baseCost = settings.MedievalHygieneCost;
                                     break;
                                 case "MedievalResearch":
-                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalResearch").baseCost = (settings.MedievalResearchCost);
                                     settings.MedievalResearchCost = 0;
+                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalResearch").baseCost = settings.MedievalResearchCost;
                                     break;
                                 case "TrainingTargets":
-                                    DefDatabase<ResearchProjectDef>.GetNamed("TrainingTargets").baseCost = (settings.TrainingTargetsCost);
                                     settings.TrainingTargetsCost = 0;
+                                    DefDatabase<ResearchProjectDef>.GetNamed("TrainingTargets").baseCost = settings.TrainingTargetsCost;
                                     break;
                                 case "SpacerPlants":
-                                    DefDatabase<ResearchProjectDef>.GetNamed("SpacerPlants").baseCost = (settings.SpacerPlantsCost);
                                     settings.SpacerPlantsCost = 0;
+                                    DefDatabase<ResearchProjectDef>.GetNamed("SpacerPlants").baseCost = settings.SpacerPlantsCost;
                                     break;
                             }
                         }
                         else {
                             switch (def.defName) {
                                 case "MedievalCooking":
-                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalCooking").baseCost = (settings.MedievalCookingCost);
                                     settings.MedievalCookingCost = settings.ResearchCostBackup["MedievalCookingCost"];
+                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalCooking").baseCost = settings.MedievalCookingCost;
                                     break;
                                 case "MedievalDefenses":
-                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalDefenses").baseCost = (settings.MedievalDefensesCost);
                                     settings.MedievalDefensesCost = settings.ResearchCostBackup["MedievalDefensesCost"];
+                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalDefenses").baseCost = settings.MedievalDefensesCost;
                                     break;
                                 case "MedievalHygiene":
-                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalHygiene").baseCost = (settings.MedievalHygieneCost);
                                     settings.MedievalHygieneCost = settings.ResearchCostBackup["MedievalHygieneCost"];
+                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalHygiene").baseCost = settings.MedievalHygieneCost;
                                     break;
                                 case "MedievalResearch":
-                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalResearch").baseCost = (settings.MedievalResearchCost);
                                     settings.MedievalResearchCost = settings.ResearchCostBackup["MedievalResearchCost"];
+                                    DefDatabase<ResearchProjectDef>.GetNamed("MedievalResearch").baseCost = settings.MedievalResearchCost;
                                     break;
                                 case "TrainingTargets":
-                                    DefDatabase<ResearchProjectDef>.GetNamed("TrainingTargets").baseCost = (settings.TrainingTargetsCost);
                                     settings.TrainingTargetsCost = settings.ResearchCostBackup["TrainingTargetsCost"];
+                                    DefDatabase<ResearchProjectDef>.GetNamed("TrainingTargets").baseCost = settings.TrainingTargetsCost;
                                     break;
                                 case "SpacerPlants":
-                                    DefDatabase<ResearchProjectDef>.GetNamed("SpacerPlants").baseCost = (settings.SpacerPlantsCost);
                                     settings.SpacerPlantsCost = settings.ResearchCostBackup["SpacerPlantsCost"];
+                                    DefDatabase<ResearchProjectDef>.GetNamed("SpacerPlants").baseCost = settings.SpacerPlantsCost;
                                     break;
                             }
+                        }
+                    }
+                    else {
+                        if (def.UnlockedDefs.Count == 0) {
+                            List<string> researchBlacklist = new List<string>() { "Bioregeneration", "Archogenetics" };
+                            if (!researchBlacklist.Contains(def.defName)) {
+                                def.baseCost = 0;
+                            }
+                        }
+                        else {
+                            float defaultCost = defaultResearch.Where(x => x.Key.defName == def.defName).ToList()[0].Value;
+                            def.baseCost = defaultCost;
                         }
                     }
                 }
@@ -326,32 +347,39 @@ namespace RimAges {
             else {
                 var res = DefDatabase<ResearchProjectDef>.AllDefsListForReading.ListFullCopy();
                 foreach (var def in res) {
-                    if (def.modContentPack.ToString() == "markflynnman.rimages" && techAgeResearch.Contains(def) == false) {
+                    if (def.modContentPack.ToString() == "markflynnman.rimages") {
+                        if (techAgeResearch.Contains(def)) { continue; }
                         switch (def.defName) {
                             case "MedievalCooking":
-                                DefDatabase<ResearchProjectDef>.GetNamed("MedievalCooking").baseCost = (settings.MedievalCookingCost);
                                 settings.MedievalCookingCost = settings.ResearchCostBackup["MedievalCookingCost"];
+                                DefDatabase<ResearchProjectDef>.GetNamed("MedievalCooking").baseCost = settings.MedievalCookingCost;
                                 break;
                             case "MedievalDefenses":
-                                DefDatabase<ResearchProjectDef>.GetNamed("MedievalDefenses").baseCost = (settings.MedievalDefensesCost);
                                 settings.MedievalDefensesCost = settings.ResearchCostBackup["MedievalDefensesCost"];
+                                DefDatabase<ResearchProjectDef>.GetNamed("MedievalDefenses").baseCost = settings.MedievalDefensesCost;
                                 break;
                             case "MedievalHygiene":
-                                DefDatabase<ResearchProjectDef>.GetNamed("MedievalHygiene").baseCost = (settings.MedievalHygieneCost);
                                 settings.MedievalHygieneCost = settings.ResearchCostBackup["MedievalHygieneCost"];
+                                DefDatabase<ResearchProjectDef>.GetNamed("MedievalHygiene").baseCost = settings.MedievalHygieneCost;
                                 break;
                             case "MedievalResearch":
-                                DefDatabase<ResearchProjectDef>.GetNamed("MedievalResearch").baseCost = (settings.MedievalResearchCost);
                                 settings.MedievalResearchCost = settings.ResearchCostBackup["MedievalResearchCost"];
+                                DefDatabase<ResearchProjectDef>.GetNamed("MedievalResearch").baseCost = settings.MedievalResearchCost;
                                 break;
                             case "TrainingTargets":
-                                DefDatabase<ResearchProjectDef>.GetNamed("TrainingTargets").baseCost = (settings.TrainingTargetsCost);
                                 settings.TrainingTargetsCost = settings.ResearchCostBackup["TrainingTargetsCost"];
+                                DefDatabase<ResearchProjectDef>.GetNamed("TrainingTargets").baseCost = settings.TrainingTargetsCost;
                                 break;
                             case "SpacerPlants":
-                                DefDatabase<ResearchProjectDef>.GetNamed("SpacerPlants").baseCost = (settings.SpacerPlantsCost);
                                 settings.SpacerPlantsCost = settings.ResearchCostBackup["SpacerPlantsCost"];
+                                DefDatabase<ResearchProjectDef>.GetNamed("SpacerPlants").baseCost = settings.SpacerPlantsCost;
                                 break;
+                        }
+                    }
+                    else {
+                        if (def.Cost == 0) {
+                            float defaultCost = defaultResearch.Where(x => x.Key.defName == def.defName).ToList()[0].Value;
+                            def.baseCost = defaultCost;
                         }
                     }
                 }
@@ -359,12 +387,12 @@ namespace RimAges {
         }
 
         public static void UpdateResearch() {
-            RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
             ResearchProjectDef currentResearch = DefDatabase<ResearchProjectDef>.GetNamed(RimAgesSettings.currentResearch.Replace(" ", ""));
             Dictionary<Def, List<ResearchProjectDef>> currentDefDict = RimAgesMod.UpdateDefDict(RimAgesSettings.currentResearch);
             if (RimAgesSettings.rightDefDictInit == false) { return; }
             foreach (var def in RimAgesSettings.rightDefDict) {
                 if (!currentDefDict.ContainsKey(def.Key)) { // If def is not in currentResearch unlocks
+                    foreach (ResearchProjectDef research in def.Value) { clearCacheList.Add(research); }
                     RimAgesMod.RimAgesResearchChanges.Remove(def);
                     RemoveResearch(def.Key);
                     AddResearch(def.Key, new List<ResearchProjectDef>{ currentResearch });
@@ -374,6 +402,7 @@ namespace RimAges {
             }
             foreach (var def in currentDefDict) {
                 if (!RimAgesSettings.rightDefDict.ContainsKey(def.Key)) {
+                    foreach (ResearchProjectDef research in def.Value) { clearCacheList.Add(research); }
                     RimAgesMod.RimAgesResearchChanges.Remove(def);
                     RemoveResearch(def.Key);
                     foreach (ResearchProjectDef research in def.Value) { clearCacheList.Add(research); }

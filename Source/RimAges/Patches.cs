@@ -20,12 +20,21 @@ namespace RimAges {
     public class ModSettingsPatch {
         public static void Prefix() {
             RimAges.UpdateResearch();
+            RimAges.ApplyResearchCost();
             RimAgesMod.RimAgesResearchChanges.Save();
         }
+
         public static void Postfix() {
             Log.Warning($"{RimAges.modTag} - Settings saved at {DateTime.Now:hh:mm:ss tt}");
-            RimAges.ApplyResearchCost();
+
+            foreach (ResearchProjectDef research in RimAges.clearCacheList) {
+                Traverse.Create(research).Field("cachedUnlockedDefs").SetValue(null);
+            }
+            Log.Warning($"{RimAges.modTag} - Cache cleared!");
+            RimAges.clearCacheList.Clear();
+
             RimAges.ApplyEmptyResearch();
+
             RimAgesSettings.leftDefDict = RimAgesMod.UpdateDefDict(null);
             RimAgesSettings.rightDefDict = RimAgesMod.UpdateDefDict(RimAgesSettings.currentResearch);
         }

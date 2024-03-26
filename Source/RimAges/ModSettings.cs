@@ -9,7 +9,6 @@ using System.Security.Cryptography;
 using System.Diagnostics.Eventing.Reader;
 using Verse.AI;
 using LudeonTK;
-using static RimWorld.FleshTypeDef;
 
 namespace RimAges {
     public class RimAgesSettings : ModSettings {
@@ -204,9 +203,14 @@ namespace RimAges {
             listingStandard.End();
 
             listingStandard.Begin(contentRect);
-            listingStandard.CheckboxLabeled("No Starting Research", ref settings.noResearch, "Start the game with no research.");
-            listingStandard.CheckboxLabeled("Enable Empty Research", ref settings.emptyResearch, "Enable research that has no unlocks.");
-
+            if (RimAges_Utility.CustomCheckbox(listingStandard, "No Starting Research", ref settings.noResearch, "Start the game with no research.")) {
+                RimAges.noResearch = !RimAges.noResearch;
+                RimAges.ApplyEmptyResearch();
+            }
+            if (RimAges_Utility.CustomCheckbox(listingStandard, "Enable Empty Research", ref settings.emptyResearch, "Enable research that has no unlocks.")) {
+                RimAges.emptyResearch = !RimAges.emptyResearch;
+                RimAges.ApplyEmptyResearch();
+            }
             listingStandard.End();
         }
 
@@ -340,6 +344,10 @@ namespace RimAges {
                 if (Input.GetMouseButtonUp(0) && isDragging) { isDragging = false; if (dragging != (null, null, new Vector2(0, 0))) {
                         if (!leftDefDict.ContainsKey(dragging.Item1)) {
                             leftDefDict.Add(dragging.Item1, dragging.Item2);
+                            RimAges.UpdateResearch();
+                            RimAges.ApplyEmptyResearch();
+                            RimAges.ApplyResearchCost();
+                            RimAgesMod.RimAgesResearchChanges.Save();
                         }
                         if (rightDefDict.ContainsKey(dragging.Item1)) {
                             rightDefDict.Remove(dragging.Item1);
@@ -356,6 +364,10 @@ namespace RimAges {
                 if (Input.GetMouseButtonUp(0) && isDragging) { isDragging = false; if (dragging != (null, null, new Vector2(0, 0))) {
                         if (!rightDefDict.ContainsKey(dragging.Item1)) {
                             rightDefDict.Add(dragging.Item1, dragging.Item2);
+                            RimAges.UpdateResearch();
+                            RimAges.ApplyEmptyResearch();
+                            RimAges.ApplyResearchCost();
+                            RimAgesMod.RimAgesResearchChanges.Save();
                             if (leftDefDict.ContainsKey(dragging.Item1)) {
                                 leftDefDict.Remove(dragging.Item1);
                             }
@@ -1287,7 +1299,6 @@ namespace RimAges {
                 RimAges.clearCacheList = DefDatabase<ResearchProjectDef>.AllDefs.ToHashSet();
                 settings.ResearchChanges.Clear();
                 Init(settings);
-                //settings.Write();
 
                 foreach (var def in GetUsableDefs()) {
                     RimAges.RemoveResearch(def);
@@ -1299,7 +1310,7 @@ namespace RimAges {
                         }
                     }
                 }
-                //settings.Write();
+                RimAges.ApplyEmptyResearch();
             }
 
             public static void Remove(KeyValuePair<Def, List<ResearchProjectDef>> defDict) {

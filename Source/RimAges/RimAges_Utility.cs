@@ -4,6 +4,7 @@ using System.Linq;
 using RimWorld;
 using Verse;
 using UnityEngine;
+using Verse.Sound;
 
 namespace RimAges {
     public class RimAges_Utility {
@@ -20,6 +21,42 @@ namespace RimAges {
                 RimAgesMod.DrawListItem(new Rect(0, 0, size.x, size.y), def, researchProjectDef);
             }, true);
 
+        }
+
+        public static bool CustomCheckbox(Listing_Standard listingStandard, string label, ref bool checkOn, string tooltip = null) {
+            Rect checkbox = listingStandard.GetRect(24);
+            Rect labelRect = new Rect(checkbox);
+            labelRect.width -= 24;
+            Rect checkRect = new Rect(labelRect.xMax, labelRect.y, 24, 24);
+
+            Widgets.Label(labelRect, label);
+            if (checkOn) {
+                GUI.DrawTexture(checkRect, Widgets.CheckboxOnTex);
+            }
+            else {
+                GUI.DrawTexture(checkRect, Widgets.CheckboxOffTex);
+            }
+
+            if (Mouse.IsOver(checkbox)) {
+                Widgets.DrawHighlight(checkbox);
+                if (!tooltip.NullOrEmpty()) {
+                    TooltipHandler.TipRegion(checkbox, tooltip);
+                }
+                if (Event.current.type == EventType.MouseDown) {
+                    if (checkbox.Contains(Event.current.mousePosition)) {
+                        checkOn = !checkOn;
+                        if (checkOn) {
+                            SoundDefOf.Checkbox_TurnedOn.PlayOneShotOnCamera();
+                            return true;
+                        }
+                        else {
+                            SoundDefOf.Checkbox_TurnedOff.PlayOneShotOnCamera();
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
         }
     }
 }
