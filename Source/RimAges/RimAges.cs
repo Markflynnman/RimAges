@@ -50,9 +50,15 @@ namespace RimAges {
 
             var researchDefs = DefDatabase<ResearchProjectDef>.AllDefsListForReading.ListFullCopy();
 
+            Log.Message($"{modTag} - Start SortTabs");
             SortTabs(researchDefs, tabs);
+            Log.Message($"{modTag} - End SortTabs");
+            Log.Message($"{modTag} - Start OrganizeTabs");
             OrganizeTabs(researchDefs);
+            Log.Message($"{modTag} - End OrganizeTabs");
+            Log.Message($"{modTag} - Start ResearchPrerequisites");
             ResearchPrerequisites(researchDefs, tabs);
+            Log.Message($"{modTag} - End ResearchPrerequisites");
 
             // Add research prerequisite to thing def
             //DefDatabase<ThingDef>.GetNamed("SimpleResearchBench").researchPrerequisites.Add(DefDatabase<ResearchProjectDef>.GetNamed("MedievalResearch"));
@@ -127,8 +133,10 @@ namespace RimAges {
             // Removes unused tabs
             //-- Condense -- Ex. https://ludeon.com/forums/index.php?topic=50275.0
             List<ResearchTabDef> tabsToRemove = new List<ResearchTabDef>();
+            ResearchTabDef anomalyTab = null;
             foreach (var tab in tabs) {
-                if (tab.defName != "NeolithicAge" && tab.defName != "MedievalAge" && tab.defName != "IndustrialAge" && tab.defName != "SpacerAge" && tab.defName != "UltraAge" && tab.defName != "ArchotechAge") {
+                if (tab.defName == "Anomaly") { anomalyTab = tab; }
+                if (tab.defName != "NeolithicAge" && tab.defName != "MedievalAge" && tab.defName != "IndustrialAge" && tab.defName != "SpacerAge" && tab.defName != "UltraAge" && tab.defName != "ArchotechAge"  && tab.defName != "Anomaly") {
                     //Log.Warning($"{modTag} Tab to remove: {tab.defName}");
                     tabsToRemove.Add(tab);
                     tab.label = "";
@@ -137,6 +145,10 @@ namespace RimAges {
             foreach (var tab in tabsToRemove) {
                 tabs.Remove(tab);
             }
+
+            // Move Anomaly tab to end
+            tabs.Remove(anomalyTab);
+            tabs.Add(anomalyTab);
 
             DefDatabase<ResearchTabDef>.Clear();
             foreach (var t in tabs) {
@@ -149,8 +161,11 @@ namespace RimAges {
 
         // Assign ResearchProjectDefs to correct tabs
         static void SortTabs(List<ResearchProjectDef> researchDefs, List<ResearchTabDef> tabs) {
+            Log.Message($"{modTag} - Research defs: {researchDefs.Count}");
             foreach (var def in researchDefs) {
                 if (def.defName == "MedievalAge" || def.defName == "IndustrialAge" || def.defName == "SpacerAge" || def.defName == "UltraAge" || def.defName == "ArchotechAge") { continue; }
+                // Skip if ResearchProjectDef is an anomaly
+                if (def.knowledgeCategory != null || def.tab == DefDatabase<ResearchTabDef>.GetNamed("Anomaly")) { continue; }
                 def.tab = DefDatabase<ResearchTabDef>.GetNamed($"{def.techLevel}Age");
             }
         }
@@ -161,13 +176,17 @@ namespace RimAges {
             List<ResearchProjectDef> resList = new List<ResearchProjectDef>(); // DEBUG ONLY
 
             foreach (var tab in researchByTab) {
+                // Skip Anomaly tab 
+                if (tab.Key == DefDatabase<ResearchTabDef>.GetNamed($"Anomaly")) { continue; }
+
                 var defList = tab.ToList();
 
                 // Group ResearchProjectDefs by the mod that added them and group vanilla/dlc ResearchProjectDefs under "Vanilla"
                 var researchByMod = defList.GroupBy(res => (res.modContentPack.ToString() == "Ludeon.RimWorld" ||
                     res.modContentPack.ToString() == "Ludeon.RimWorld.Royalty" ||
                     res.modContentPack.ToString() == "Ludeon.RimWorld.Biotech" ||
-                    res.modContentPack.ToString() == "Ludeon.RimWorld.Ideology") ? "Vanilla" : res.modContentPack.ToString(), res => res);
+                    res.modContentPack.ToString() == "Ludeon.RimWorld.Ideology" ||
+                    res.modContentPack.ToString() == "Ludeon.RimWorld.Anomaly") ? "Vanilla" : res.modContentPack.ToString(), res => res);
 
                 Dictionary<string, Dictionary<string, float>> resX = new Dictionary<string, Dictionary<string, float>>();
 
@@ -233,6 +252,8 @@ namespace RimAges {
         // Set other research as prerequisite of custom research
         static void ResearchPrerequisites(List<ResearchProjectDef> researchDefs, List<ResearchTabDef> tabs) {
             foreach(var res in researchDefs) {
+                // Skip anomalies
+                if (res.techLevel == TechLevel.Undefined) { continue; }
                 // Add current research to "Age" research prerequisites
                 if (res.techLevel != TechLevel.Archotech && res.techprintCount == 0 && res.RequiredAnalyzedThingCount == 0) {
                     // Get index of current research techLevel in TechLevel enum, add 1 to get the next techLevel and add "Age" to the end to get correct research
