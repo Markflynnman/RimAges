@@ -9,6 +9,7 @@ using System.Security.Cryptography;
 using System.Diagnostics.Eventing.Reader;
 using Verse.AI;
 using LudeonTK;
+using System.Diagnostics;
 
 namespace RimAges {
     public class RimAgesSettings : ModSettings {
@@ -43,6 +44,9 @@ namespace RimAges {
         public static bool filterDropDownActive = false;
         public static bool assignedDefsFilter = false;
         public static string searchFilter;
+
+        public static int itemStart = 0;
+        public static int itemEnd = 10;
 
         public static Dictionary<Def, List<ResearchProjectDef>> leftDefDict = new Dictionary<Def, List<ResearchProjectDef>>();
         public static Dictionary<Def, List<ResearchProjectDef>> rightDefDict = new Dictionary<Def, List<ResearchProjectDef>>();
@@ -333,7 +337,7 @@ namespace RimAges {
             Widgets.DrawWindowBackground(rightScrollRect);
             Rect rightScrollPosRect = rightScrollRect.ContractedBy(10);
 
-            // Add/Remove defs from dicts
+            // Add/Remove defs from dicts (dragging)
             Vector2 mousePos = Event.current.mousePosition;
             if ((mousePos.x > leftScrollRect.xMin && mousePos.x < leftScrollRect.xMax) && (mousePos.y > leftScrollRect.yMin && mousePos.y < leftScrollRect.yMax)) { // Add to left side
                 if (isDragging) { // Draw highlight
@@ -380,14 +384,14 @@ namespace RimAges {
             if (Input.GetMouseButtonUp(0) && isDragging) { isDragging = false; if (dragging != (null, null, new Vector2(0, 0))) { dragging = (null, null, new Vector2(0, 0)); } }
 
             // Left Scroll
-            int lineHeight = 50;
-            Rect leftDefListRect = new Rect(0, 0, leftScrollPosRect.width - 30, filteredLeftDefDict.Count * lineHeight);
+            int lineHeight = 60;
+            Rect leftDefListRect = new Rect(0, 0, leftScrollPosRect.width - 30, Math.Min(filteredLeftDefDict.Count, 10) * lineHeight); // which ever is smaller 9? or def count
 
             DefScroll leftDefScroll = new DefScroll(leftDefListRect, leftScrollPosRect, listingStandard, lineHeight);
-            leftDefScroll.DrawDefScroll(ref leftScrollPos, filteredLeftDefDict);
+            leftDefScroll.DrawDefScroll(ref leftScrollPos, filteredLeftDefDict, itemStart, itemEnd);
 
             // Right Scroll
-            Rect rightDefListRect = new Rect(0, 0, rightScrollPosRect.width - 30, rightDefDict.Count * lineHeight);
+            Rect rightDefListRect = new Rect(0, 0, rightScrollPosRect.width - 30, Math.Min(rightDefDict.Count, 10) * lineHeight);
 
             DefScroll rightDefScroll = new DefScroll(rightDefListRect, rightScrollPosRect, listingStandard, lineHeight);
             rightDefScroll.DrawDefScroll(ref rightScrollPos, rightDefDict);
@@ -882,7 +886,6 @@ namespace RimAges {
             public Listing_Standard listingStandard;
             public int lineHeight;
 
-
             public DefScroll(Rect _defListRect, Rect _scrollPosRect, Listing_Standard _listingStandard, int _lineHeight) {
                 defListRect = _defListRect;
                 scrollPosRect = _scrollPosRect;
@@ -890,32 +893,50 @@ namespace RimAges {
                 lineHeight = _lineHeight;
             }
 
-            public void DrawDefScroll(ref Vector2 _scrollPos, Dictionary<Def, List<ResearchProjectDef>> _defDict) {
+            public void DrawDefScroll(ref Vector2 _scrollPos, Dictionary<Def, List<ResearchProjectDef>> _defDict, int _itemStart = 0, int _itemEnd = 10) {
                 defDict = _defDict;
-                Widgets.BeginScrollView(scrollPosRect, ref _scrollPos, defListRect, true);
+                Widgets.BeginScrollView(scrollPosRect, ref _scrollPos, defListRect, false);
                 listingStandard.Begin(defListRect);
                 int cellPosition;
                 int lineNumber;
                 lineNumber = cellPosition = 0;
 
-                foreach (var item in defDict) {
+                for (int item = _itemStart; item < _itemEnd; item++) {
+                    if (defDict.Count - 1 < item) { break; }
+
                     cellPosition += lineHeight;
                     lineNumber++;
 
                     Rect rect = listingStandard.GetRect(lineHeight);
                     Widgets.DrawWindowBackground(rect);
                     if (lineNumber % 2 != 1) { Widgets.DrawLightHighlight(rect); }
-                    Def currentDef = item.Key;
-                    List<ResearchProjectDef> researchDef = item.Value;
+                    Def currentDef = defDict.ElementAt(item).Key;
+                    List<ResearchProjectDef> researchDef = defDict.ElementAt(item).Value;
                     DrawListItem(rect, currentDef, researchDef);
 
                     if (Mouse.IsOver(rect)) {
                         if (isDragging == false) { Widgets.DrawLightHighlight(rect); }
-                        if (Input.GetMouseButtonDown(0) && isDragging == false) { dragging = (currentDef, researchDef, rect.size); isDragging = true; } }
+                        if (Input.GetMouseButtonDown(0) && isDragging == false) { dragging = (currentDef, researchDef, rect.size); isDragging = true; }
+                    }
 
                 }
                 listingStandard.End();
                 Widgets.EndScrollView();
+
+                // Scorll down
+                if (leftScrollPos.y > lineHeight && itemEnd < defDict.Count - 1) { 
+                    itemStart += 1;
+                    itemEnd += 1;
+                    leftScrollPos.y = lineHeight;
+                    Log.Message($"{RimAges.modTag} - Scroll Down - defCount: {defDict.Count} - itemEnd: {itemEnd}");
+                }
+                // Scroll up
+                if (leftScrollPos.y < lineHeight && itemStart != 0) {
+                    itemStart -= 1;
+                    itemEnd -= 1;
+                    leftScrollPos.y = lineHeight;
+                    Log.Message($"{RimAges.modTag} - Scroll Up");
+                }
             }
         }
 
