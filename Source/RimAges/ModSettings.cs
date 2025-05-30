@@ -1064,8 +1064,10 @@ namespace RimAges {
             }
             listingStandard.End();
 
-            leftDefDict = UpdateDefDict(null);
-            rightDefDict = UpdateDefDict(currentResearch);
+            if (!researchDropDownActive) {
+                leftDefDict = UpdateDefDict(null);
+                rightDefDict = UpdateDefDict(currentResearch);
+            }
         }
 
         public static void DrawFilterDropDown(Rect dropDown, Listing_Standard listingStandard) {
