@@ -1,13 +1,9 @@
-﻿using RimWorld;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System;
 using UnityEngine;
 using Verse;
 using static RimAges.RimAgesSettings;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Diagnostics.Eventing.Reader;
-using Verse.AI;
 using LudeonTK;
 
 namespace RimAges {
@@ -31,10 +27,10 @@ namespace RimAges {
         public Dictionary<string, int> ResearchCostBackup = new Dictionary<string, int>();
         public Dictionary<string, List<string>> ResearchChanges;
 
-
-        public static Vector2 leftScrollPos;
-        public static Vector2 rightScrollPos;
+        public static int leftDefPageNum = 1;
+        public static int rightDefPageNum = 1;
         public static int currentPage = 0;
+        public static int scrollAmount;
         public static string currentResearch = "Medieval Age";
         public static bool isDragging = false;
         public static (Def, List<ResearchProjectDef>, Vector2) dragging;
@@ -270,6 +266,8 @@ namespace RimAges {
         }
 
         public static void DrawResearchTab(Rect contentRect, RimAgesSettings settings) {
+            Vector2 currentMousePos = Event.current.mousePosition;
+            TextAnchor anchor = Text.Anchor;
             Listing_Standard listingStandard = new Listing_Standard();
 
             if (isDragging) { RimAges_Utility.Drag(dragging); }
@@ -306,6 +304,23 @@ namespace RimAges {
             searchRect.width = buttonWidth + 75;
             searchFilter = Widgets.TextField(searchRect, searchFilter);
 
+            // Search Modifier Help Window
+            if (Mouse.IsOver(searchRect)) {
+                float searchHelpSizeX = 325;
+                float searchHelpSizeY = 150;
+                Vector2 mousePos = Input.mousePosition;
+                Rect searchHelpRect = new Rect(mousePos.x - searchHelpSizeX, Screen.height + (mousePos.y * -1), searchHelpSizeX, searchHelpSizeY);
+                Find.WindowStack.ImmediateWindow(13, searchHelpRect, WindowLayer.Super, () => {
+                    Rect dropRect = searchHelpRect.ContractedBy(5f);
+                    dropRect.position = new Vector2(10, 10);
+
+                    anchor = Text.Anchor;
+                    Text.Anchor = TextAnchor.UpperLeft;
+                    Widgets.Label(dropRect, $"Search Modifiers:\nUse ',' to sepperate search terms.\nUse '!' to invert a search term.\n#name/#n - Defs Label / Readable Name\n#def/#d - Def Name\n#type/#t - Def Type (Thing, Terrain, etc.)\n#research/#r - Research a def currently has.\n#mod/#m - Mod that adds the def.");
+                    Text.Anchor = anchor;
+                });
+            }
+
             // Filter Left Def Dict
             List<Def> leftDefList = leftDefDict.Keys.ToList();
             Dictionary<Def, List<ResearchProjectDef>> filteredLeftDefDict = FilterDefs(leftDefList);
@@ -314,31 +329,30 @@ namespace RimAges {
             Rect resultsRect = searchRect;
             resultsRect.width = 90;
             resultsRect.x = searchRect.xMax + 5;
-            TextAnchor anchor = Text.Anchor;
+            anchor = Text.Anchor;
             Text.Anchor = TextAnchor.UpperRight;
             Widgets.Label(resultsRect, $"Results: {filteredLeftDefDict.Count}");
             Text.Anchor = anchor;
 
-            // Scroll Rects
-            Rect scrollRect = listingStandard.GetRect(contentRect.height - (buttonHeight * 3) - 20);
-            scrollRect.y += 10;
-            Rect leftScrollRect = scrollRect;
-            leftScrollRect.width = (leftScrollRect.width / 2) - 5;
-            Widgets.DrawWindowBackground(leftScrollRect);
-            Rect leftScrollPosRect = leftScrollRect.ContractedBy(10);
+            // Def List Rects
+            Rect defListsRect = listingStandard.GetRect(contentRect.height - (buttonHeight * 3) - 20);
+            defListsRect.y += 10;
+            Rect leftListBgRect = defListsRect;
+            leftListBgRect.width = (leftListBgRect.width / 2) - 5;
+            Widgets.DrawWindowBackground(leftListBgRect);
+            Rect leftListPosRect = leftListBgRect.ContractedBy(10);
 
-            Rect rightScrollRect = scrollRect;
-            rightScrollRect.width = (rightScrollRect.width / 2) - 5;
-            rightScrollRect.x = (scrollRect.width / 2) + 5;
-            Widgets.DrawWindowBackground(rightScrollRect);
-            Rect rightScrollPosRect = rightScrollRect.ContractedBy(10);
+            Rect rightListBgRect = defListsRect;
+            rightListBgRect.width = (rightListBgRect.width / 2) - 5;
+            rightListBgRect.x = (defListsRect.width / 2) + 5;
+            Widgets.DrawWindowBackground(rightListBgRect);
+            Rect rightListPosRect = rightListBgRect.ContractedBy(10);
 
-            // Add/Remove defs from dicts
-            Vector2 mousePos = Event.current.mousePosition;
-            if ((mousePos.x > leftScrollRect.xMin && mousePos.x < leftScrollRect.xMax) && (mousePos.y > leftScrollRect.yMin && mousePos.y < leftScrollRect.yMax)) { // Add to left side
+            // Add/Remove defs from dicts (dragging)
+            if ((currentMousePos.x > leftListBgRect.xMin && currentMousePos.x < leftListBgRect.xMax) && (currentMousePos.y > leftListBgRect.yMin && currentMousePos.y < leftListBgRect.yMax)) { // Add to left side
                 if (isDragging) { // Draw highlight
                     // TODO Make highlight draw over all scroll items
-                    Rect leftHighlight = leftScrollRect;
+                    Rect leftHighlight = leftListBgRect;
                     Widgets.DrawHighlight(leftHighlight);
                 }
                 if (Input.GetMouseButtonUp(0) && isDragging) { isDragging = false; if (dragging != (null, null, new Vector2(0, 0))) {
@@ -355,10 +369,10 @@ namespace RimAges {
                     } 
                 }
             }
-            if ((mousePos.x > rightScrollRect.xMin && mousePos.x < rightScrollRect.xMax) && (mousePos.y > rightScrollRect.yMin && mousePos.y < rightScrollRect.yMax)) { // Add to right side
+            if ((currentMousePos.x > rightListBgRect.xMin && currentMousePos.x < rightListBgRect.xMax) && (currentMousePos.y > rightListBgRect.yMin && currentMousePos.y < rightListBgRect.yMax)) { // Add to right side
                 if (isDragging) { // Draw highlight
                     // TODO Make highlight draw over all scroll items
-                    Rect rightHighlight = rightScrollRect;
+                    Rect rightHighlight = rightListBgRect;
                     Widgets.DrawHighlight(rightHighlight);
                 }
                 if (Input.GetMouseButtonUp(0) && isDragging) { isDragging = false; if (dragging != (null, null, new Vector2(0, 0))) {
@@ -379,18 +393,18 @@ namespace RimAges {
             // Reset dragging
             if (Input.GetMouseButtonUp(0) && isDragging) { isDragging = false; if (dragging != (null, null, new Vector2(0, 0))) { dragging = (null, null, new Vector2(0, 0)); } }
 
-            // Left Scroll
-            int lineHeight = 50;
-            Rect leftDefListRect = new Rect(0, 0, leftScrollPosRect.width - 30, filteredLeftDefDict.Count * lineHeight);
+            // Left Def List
+            int lineHeight = 60;
+            Rect leftDefListRect = new Rect(0, 0, leftListPosRect.width - 30, Math.Min(filteredLeftDefDict.Count, 10) * lineHeight); // which ever is smaller 9? or def count
 
-            DefScroll leftDefScroll = new DefScroll(leftDefListRect, leftScrollPosRect, listingStandard, lineHeight);
-            leftDefScroll.DrawDefScroll(ref leftScrollPos, filteredLeftDefDict);
+            DefPages leftDefPages = new DefPages(leftDefListRect, leftListPosRect, listingStandard, lineHeight);
+            leftDefPages.DrawDefPage(ref leftDefPageNum, ref scrollAmount, filteredLeftDefDict);
 
-            // Right Scroll
-            Rect rightDefListRect = new Rect(0, 0, rightScrollPosRect.width - 30, rightDefDict.Count * lineHeight);
+            // Right Def List
+            Rect rightDefListRect = new Rect(0, 0, rightListPosRect.width - 30, Math.Min(rightDefDict.Count, 10) * lineHeight);
 
-            DefScroll rightDefScroll = new DefScroll(rightDefListRect, rightScrollPosRect, listingStandard, lineHeight);
-            rightDefScroll.DrawDefScroll(ref rightScrollPos, rightDefDict);
+            DefPages rightDefPages = new DefPages(rightDefListRect, rightListPosRect, listingStandard, lineHeight);
+            rightDefPages.DrawDefPage(ref rightDefPageNum, ref scrollAmount, rightDefDict);
 
             listingStandard.End();
 
@@ -874,48 +888,139 @@ namespace RimAges {
             return searchedDefs;
         }
 
-        // Makes a scrollable list of defs
-        public class DefScroll {
+        // Makes a page based list of defs
+        public class DefPages {
             public Dictionary<Def, List<ResearchProjectDef>> defDict;
             public Rect defListRect;
-            public Rect scrollPosRect;
+            public Rect listPosRect;
             public Listing_Standard listingStandard;
             public int lineHeight;
 
-
-            public DefScroll(Rect _defListRect, Rect _scrollPosRect, Listing_Standard _listingStandard, int _lineHeight) {
+            public DefPages(Rect _defListRect, Rect _listPosRect, Listing_Standard _listingStandard, int _lineHeight) {
                 defListRect = _defListRect;
-                scrollPosRect = _scrollPosRect;
+                listPosRect = _listPosRect;
                 listingStandard = _listingStandard;
                 lineHeight = _lineHeight;
             }
 
-            public void DrawDefScroll(ref Vector2 _scrollPos, Dictionary<Def, List<ResearchProjectDef>> _defDict) {
+            public void DrawDefPage(ref int _defPageNum, ref int _scrollAmount, Dictionary<Def, List<ResearchProjectDef>> _defDict) {
                 defDict = _defDict;
-                Widgets.BeginScrollView(scrollPosRect, ref _scrollPos, defListRect, true);
-                listingStandard.Begin(defListRect);
+                listingStandard.Begin(listPosRect);
                 int cellPosition;
                 int lineNumber;
+                int defPerPage = 6;
+                int numOfPages;
+                int firstItem;
                 lineNumber = cellPosition = 0;
 
-                foreach (var item in defDict) {
+                numOfPages = (int)Math.Ceiling((double)_defDict.Count / defPerPage);
+                if (numOfPages < 1) { numOfPages = 1; }
+
+                if (_defPageNum > numOfPages) { _defPageNum = numOfPages; }
+                if (_defPageNum < 1) { _defPageNum = 1; }
+                firstItem = (_defPageNum - 1) * defPerPage;
+
+                for (int item = firstItem; item < firstItem + defPerPage; item++) {
+                    if (defDict.Count - 1 < item) { Log.Message("break"); break; }
+
                     cellPosition += lineHeight;
                     lineNumber++;
 
                     Rect rect = listingStandard.GetRect(lineHeight);
                     Widgets.DrawWindowBackground(rect);
                     if (lineNumber % 2 != 1) { Widgets.DrawLightHighlight(rect); }
-                    Def currentDef = item.Key;
-                    List<ResearchProjectDef> researchDef = item.Value;
+                    Def currentDef = defDict.ElementAt(item).Key;
+                    List<ResearchProjectDef> researchDef = defDict.ElementAt(item).Value;
                     DrawListItem(rect, currentDef, researchDef);
 
                     if (Mouse.IsOver(rect)) {
                         if (isDragging == false) { Widgets.DrawLightHighlight(rect); }
-                        if (Input.GetMouseButtonDown(0) && isDragging == false) { dragging = (currentDef, researchDef, rect.size); isDragging = true; } }
+                        if (Input.GetMouseButtonDown(0) && isDragging == false) { dragging = (currentDef, researchDef, rect.size); isDragging = true; }
+                    }
 
                 }
                 listingStandard.End();
-                Widgets.EndScrollView();
+
+                // Page Nav Bar
+                Rect pageNavBar = listPosRect;
+                pageNavBar.height = (lineHeight / 2) + 5;
+                pageNavBar.y += listPosRect.height - pageNavBar.height;
+
+                // Page Number
+                Rect pageNumberText = pageNavBar;
+                pageNumberText.width = 60;
+                pageNumberText.x += (listPosRect.width / 2) - pageNumberText.width / 2;
+                TextAnchor anchor = Text.Anchor;
+                Text.Anchor = TextAnchor.MiddleCenter;
+                Widgets.Label(pageNumberText, $"{_defPageNum}/{numOfPages}");
+                Text.Anchor = anchor;
+
+                // Page Nav Buttons
+                if (_defPageNum > 1) {
+                    Rect navLeftButton = pageNumberText;
+                    navLeftButton.width -= 20;
+                    navLeftButton.x -= navLeftButton.width + 5;
+                    if (Widgets.ButtonText(navLeftButton, "<")) {
+                        Log.Message($"{RimAges.modTag} - Nav Left");
+                        _defPageNum -= 1;
+                    }
+
+                    Rect navLeftSkipButton = navLeftButton;
+                    navLeftSkipButton.x -= navLeftSkipButton.width + 5;
+                    if (Widgets.ButtonText(navLeftSkipButton, "<<")) {
+                        Log.Message($"{RimAges.modTag} - Nav Skip Left");
+                        _defPageNum = 0;
+                    }
+                }
+
+                if (_defPageNum < numOfPages) {
+                    Rect navRightButton = pageNumberText;
+                    navRightButton.width -= 20;
+                    navRightButton.x += navRightButton.width + 25;
+                    if (Widgets.ButtonText(navRightButton, ">")) {
+                        Log.Message($"{RimAges.modTag} - Nav Right");
+                        _defPageNum += 1;
+                    }
+
+                    Rect navRightSkipButton = navRightButton;
+                    navRightSkipButton.x += navRightSkipButton.width + 5;
+                    if (Widgets.ButtonText(navRightSkipButton, ">>")) {
+                        Log.Message($"{RimAges.modTag} - Nav Skip Right");
+                        _defPageNum = numOfPages;
+                    }
+                }
+
+                // Scroll Logic
+                if (Mouse.IsOver(listPosRect)) {
+                    // Scorll down
+                    if (Input.mouseScrollDelta.y < 0) {
+                        _scrollAmount += 1;
+                        Log.Message(_scrollAmount);
+                    }
+
+                    // Scroll up
+                    if (Input.mouseScrollDelta.y > 0) {
+                        _scrollAmount -= 1;
+                        Log.Message(_scrollAmount);
+                    }
+
+                    if (Math.Abs(_scrollAmount) >= 3) {
+                        int pages = (int)Math.Floor((double)_scrollAmount / 3);
+                        if ((_defPageNum + pages) < 1) { _defPageNum = 1; }
+                        else if ((_defPageNum + pages) > numOfPages) { _defPageNum = numOfPages; }
+                        else { _defPageNum += pages; }
+                        _scrollAmount = 0;
+                        Log.Message(pages);
+                    }
+
+                    if (Input.mouseScrollDelta.y == 0 && _scrollAmount != 0) {
+                        _scrollAmount = 0;
+                        Log.Message("Reset Scroll Amount");
+                    }
+                }
+
+                if (_defPageNum < 1) { _defPageNum = 1; }
+                if (_defPageNum > numOfPages) { _defPageNum = numOfPages; }
             }
         }
 
@@ -1043,8 +1148,10 @@ namespace RimAges {
             }
             listingStandard.End();
 
-            leftDefDict = UpdateDefDict(null);
-            rightDefDict = UpdateDefDict(currentResearch);
+            if (!researchDropDownActive) {
+                leftDefDict = UpdateDefDict(null);
+                rightDefDict = UpdateDefDict(currentResearch);
+            }
         }
 
         public static void DrawFilterDropDown(Rect dropDown, Listing_Standard listingStandard) {
