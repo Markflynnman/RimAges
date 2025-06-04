@@ -58,5 +58,45 @@ namespace RimAges {
             }
             return false;
         }
+
+        public static bool CustomCheckboxButton(Listing_Standard listingStandard, string label, bool checkOn, string tooltip = null) {
+            Rect checkbox = listingStandard.GetRect(32);
+            Widgets.DrawWindowBackground(checkbox);
+            Widgets.DrawLightHighlight(checkbox);
+            Rect labelRect = new Rect(checkbox);
+            labelRect.width -= 38;
+            labelRect.x += 10;
+            labelRect.y += 6;
+            Rect checkRect = new Rect(labelRect.xMax, labelRect.y-2, 24, 24);
+
+            Widgets.Label(labelRect, label);
+            if (checkOn) {
+                GUI.DrawTexture(checkRect, Widgets.CheckboxOnTex);
+            }
+            else {
+                GUI.DrawTexture(checkRect, Widgets.CheckboxOffTex);
+            }
+
+            if (Mouse.IsOver(checkbox)) {
+                Widgets.DrawHighlight(checkbox);
+                if (!tooltip.NullOrEmpty()) {
+                    TooltipHandler.TipRegion(checkbox, tooltip);
+                }
+                if (Event.current.type == EventType.MouseDown) {
+                    if (checkbox.Contains(Event.current.mousePosition)) {
+                        checkOn = !checkOn;
+                        if (checkOn) {
+                            SoundDefOf.Checkbox_TurnedOn.PlayOneShotOnCamera();
+                            return true;
+                        }
+                        else {
+                            SoundDefOf.Checkbox_TurnedOff.PlayOneShotOnCamera();
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
     }
 }

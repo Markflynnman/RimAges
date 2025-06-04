@@ -5,6 +5,8 @@ using Verse;
 using static RimAges.RimAgesSettings;
 using System.Linq;
 using LudeonTK;
+using RimWorld;
+using Verse.Sound;
 
 namespace RimAges {
     public class RimAgesSettings : ModSettings {
@@ -26,6 +28,7 @@ namespace RimAges {
         public int SpacerPlantsCost;
         public Dictionary<string, int> ResearchCostBackup = new Dictionary<string, int>();
         public Dictionary<string, List<string>> ResearchChanges;
+        public List<string> EmptyResearchOverride = new List<string>();
 
         public static int leftDefPageNum = 1;
         public static int rightDefPageNum = 1;
@@ -38,6 +41,9 @@ namespace RimAges {
         public static bool researchDropDownActive = false;
         public static bool filterDropDownActive = false;
         public static bool assignedDefsFilter = false;
+        public static bool costInputWindowActive = false;
+        public static int costInput;
+        public static string costInputBuffer;
         public static string searchFilter;
 
         public static Dictionary<Def, List<ResearchProjectDef>> leftDefDict = new Dictionary<Def, List<ResearchProjectDef>>();
@@ -61,6 +67,7 @@ namespace RimAges {
             Scribe_Values.Look(ref SpacerPlantsCost, "SpacerPlantsCost", 1000, true);
             Scribe_Collections.Look(ref ResearchCostBackup, "ResearchCostBackup", LookMode.Value, LookMode.Value);
             Scribe_Collections.Look(ref ResearchChanges, "ResearchChanges", LookMode.Value, LookMode.Value);
+            Scribe_Collections.Look(ref EmptyResearchOverride, "EmptyResearchOverride", LookMode.Value);
 
             base.ExposeData();
         }
@@ -96,10 +103,9 @@ namespace RimAges {
                     researchDropDownActive = false;
                     filterDropDownActive = false;
                 }, settings.tab == 0),
-                new TabRecord("Research Cost", delegate {
+                new TabRecord("Research Options", delegate {
                     settings.tab = 1;
                     settings.Write();
-                    researchDropDownActive = false;
                     filterDropDownActive = false;
                     Log.Message($"{RimAges.modTag} - Empty Reasearch: {settings.emptyResearch} - {DateTime.Now:hh:mm:ss tt}");
                 }, settings.tab == 1),
@@ -125,7 +131,7 @@ namespace RimAges {
                 DrawMain(inRect.ContractedBy(10f), settings);
             }
             if (settings.tab == 1) {
-                DrawResearchCost(inRect.ContractedBy(10f), settings);
+                DrawResearchOptions(inRect.ContractedBy(10f), settings);
             }
             if (settings.tab == 2) {
                 DrawResearchTab(inRect.ContractedBy(10f), settings);
@@ -160,6 +166,91 @@ namespace RimAges {
             usableDefs = usableDefs.Concat(carpetList).Distinct().ToList();
 
             return usableDefs;
+        }
+
+        public static int GetCurrentResearchCost() {
+            RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
+
+            switch (currentResearch) {
+                case "Medieval Age":
+                    return settings.MedievalAgeCost;
+                case "Industrial Age":
+                    return settings.IndustrialAgeCost;
+                case "Spacer Age":
+                    return settings.SpacerAgeCost;
+                case "Ultra Age":
+                    return settings.UltraAgeCost;
+                case "Archotech Age":
+                    return settings.ArchotechAgeCost;
+                case "Medieval Cooking":
+                    return settings.MedievalCookingCost;
+                case "Medieval Defenses":
+                    return settings.MedievalDefensesCost;
+                case "Medieval Hygiene":
+                    return settings.MedievalHygieneCost;
+                case "Medieval Research":
+                    return settings.MedievalResearchCost;
+                case "Training Targets":
+                    return settings.TrainingTargetsCost;
+                case "Spacer Plants":
+                    return settings.SpacerAgeCost;
+                default:
+                    return -1;
+            }
+        }
+
+        public static void SetCurrentResarchCost(int cost) {
+            RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
+
+            if (settings.ResearchCostBackup.Keys.Contains($"{currentResearch.Replace(" ", "")}Cost")) {
+                if (!settings.emptyResearch) {
+                    if (!settings.EmptyResearchOverride.NullOrEmpty()) {
+                        if (!settings.EmptyResearchOverride.Contains(currentResearch.Replace(" ", ""))) {
+                            return;
+                        }
+                    }
+                    else {
+                        return;
+                    }
+                }
+            }
+
+            switch (currentResearch) {
+                case "Medieval Age":
+                    settings.MedievalAgeCost = cost;
+                    break;
+                case "Industrial Age":
+                    settings.IndustrialAgeCost = cost;
+                    break;
+                case "Spacer Age":
+                    settings.SpacerAgeCost = cost;
+                    break;
+                case "Ultra Age":
+                    settings.UltraAgeCost = cost;
+                    break;
+                case "Archotech Age":
+                    settings.ArchotechAgeCost = cost;
+                    break;
+                case "Medieval Cooking":
+                    settings.MedievalCookingCost = cost;
+                    break;
+                case "Medieval Defenses":
+                    settings.MedievalDefensesCost = cost;
+                    break;
+                case "Medieval Hygiene":
+                    settings.MedievalHygieneCost = cost;
+                    break;
+                case "Medieval Research":
+                    settings.MedievalResearchCost = cost;
+                    break;
+                case "Training Targets":
+                    settings.TrainingTargetsCost = cost;
+                    break;
+                case "Spacer Plants":
+                    settings.SpacerAgeCost = cost;
+                    break;
+            }
+            RimAges.ApplyEmptyResearch();
         }
 
 
@@ -204,18 +295,22 @@ namespace RimAges {
                 RimAges.ApplyEmptyResearch();
             }
             if (RimAges_Utility.CustomCheckbox(listingStandard, "Enable Empty Research", ref settings.emptyResearch, "Enable research that has no unlocks.")) {
+                settings.MedievalCookingCost = settings.ResearchCostBackup["MedievalCookingCost"];
+                settings.MedievalDefensesCost = settings.ResearchCostBackup["MedievalDefensesCost"];
+                settings.MedievalHygieneCost = settings.ResearchCostBackup["MedievalHygieneCost"];
+                settings.MedievalResearchCost = settings.ResearchCostBackup["MedievalResearchCost"];
+                settings.TrainingTargetsCost = settings.ResearchCostBackup["TrainingTargetsCost"];
+                settings.SpacerPlantsCost = settings.ResearchCostBackup["SpacerPlantsCost"];
                 RimAges.emptyResearch = !RimAges.emptyResearch;
                 RimAges.ApplyEmptyResearch();
             }
             listingStandard.End();
         }
 
-        public static void DrawResearchCost(Rect contentRect, RimAgesSettings settings) {
-            int normalInc = 100;
-            int lockedInc = 0;
-
+        public static void DrawResearchOptions(Rect contentRect, RimAgesSettings settings) {
             Listing_Standard listingStandard = new Listing_Standard();
 
+            // Reset Button
             Rect resetRect = contentRect;
             listingStandard.Begin(resetRect);
             DrawResetButton(resetRect, listingStandard);
@@ -223,44 +318,185 @@ namespace RimAges {
 
             listingStandard.Begin(contentRect);
 
-            listingStandard.Label($"Medieval Age Cost: {settings.MedievalAgeCost}", -1, "Cost of Medieval Age research.");
-            listingStandard.IntAdjuster(ref settings.MedievalAgeCost, normalInc, 100);
+            // Current Research Button
+            Rect currentResearchRect = listingStandard.GetRect(buttonHeight); // Height of button
+            currentResearchRect.xMin = (contentRect.width / 2) - (180 / 2);
 
-            listingStandard.Label($"Industrial Age Cost: {settings.IndustrialAgeCost}", -1, "Cost of Industrial Age research");
-            listingStandard.IntAdjuster(ref settings.IndustrialAgeCost, normalInc, 100);
+            currentResearchRect = currentResearchRect.LeftPartPixels(180); // Width of button
+            if (Widgets.ButtonText(currentResearchRect, currentResearch)) {
+                if (!researchDropDownActive) { settings.Write(); researchDropDownActive = true; }
+            }
 
-            listingStandard.Label($"Spacer Age Cost: {settings.SpacerAgeCost}", -1, "Cost of Spacer Age research");
-            listingStandard.IntAdjuster(ref settings.SpacerAgeCost, normalInc, 100);
+            // Current Research Drop Down
+            if (researchDropDownActive) { DrawResearchDropDown(listingStandard); }
 
-            listingStandard.Label($"Ultra Age Cost: {settings.UltraAgeCost}", -1, "Cost of Ultra Age research");
-            listingStandard.IntAdjuster(ref settings.UltraAgeCost, normalInc, 100);
+            // Buffer
+            listingStandard.GetRect(60);
 
-            listingStandard.Label($"Archotech Age Cost: {settings.ArchotechAgeCost}", -1, $"Cost of Archotech Age research");
-            listingStandard.IntAdjuster(ref settings.ArchotechAgeCost, normalInc, 100);
+            // Background
+            Rect background = contentRect;
+            background.height -= (buttonHeight * 4) - 20;
+            background.y += 48;
+            background.x -= 10;
+            Widgets.DrawWindowBackground(background);
 
-            listingStandard.Label($"Medieval Cooking Cost: {settings.MedievalCookingCost}", -1, "Cost of Medieval Cooking research");
-            if (settings.MedievalCookingCost > 0) { listingStandard.IntAdjuster(ref settings.MedievalCookingCost, normalInc, 100); }
-            else { listingStandard.IntAdjuster(ref settings.MedievalCookingCost, lockedInc, 0); }
+            // Research Cost Setting
+            Rect researchCostRect = listingStandard.GetRect(buttonHeight);
 
-            listingStandard.Label($"Medieval Defenses Cost: {settings.MedievalDefensesCost}", -1, "Cost of Medieval Defenses research");
-            if (settings.MedievalDefensesCost > 0) { listingStandard.IntAdjuster(ref settings.MedievalDefensesCost, normalInc, 100); }
-            else { listingStandard.IntAdjuster(ref settings.MedievalDefensesCost, lockedInc, 0); }
+            Rect researchCostLabel = researchCostRect;
+            researchCostLabel.width = 180;
+            researchCostLabel.x += (researchCostRect.width / 2) - researchCostLabel.width / 2;
 
-            listingStandard.Label($"Medieval Hygiene Cost: {settings.MedievalHygieneCost}", -1, "Cost of Medieval Hygiene research");
-            if (settings.MedievalHygieneCost > 0) { listingStandard.IntAdjuster(ref settings.MedievalHygieneCost, normalInc, 100); }
-            else { listingStandard.IntAdjuster(ref settings.MedievalHygieneCost, lockedInc, 0); }
+            Rect outerCostLabelBG = researchCostLabel;
+            outerCostLabelBG.width += 2;
+            outerCostLabelBG.x -= 1;
+            Color bg = new Color(21f/255f, 25f/255f, 29f/255f);
+            Widgets.DrawBoxSolidWithOutline(outerCostLabelBG, bg, Color.black);
+            Rect innerCostLabelBG = researchCostLabel;
+            innerCostLabelBG.height -= 2;
+            innerCostLabelBG.y += 1;
+            Widgets.DrawWindowBackground(innerCostLabelBG);
+            Widgets.DrawLightHighlight(outerCostLabelBG);
 
-            listingStandard.Label($"Medieval Research Cost: {settings.MedievalResearchCost}", -1, "Cost of Medieval Research research");
-            if (settings.MedievalResearchCost > 0) { listingStandard.IntAdjuster(ref settings.MedievalResearchCost, normalInc, 100); }
-            else { listingStandard.IntAdjuster(ref settings.MedievalResearchCost, lockedInc, 0); }
+            // Input Window
+            if (Mouse.IsOver(researchCostLabel) && costInputWindowActive == false) {
+                Widgets.DrawHighlight(outerCostLabelBG);
+                if (Input.GetMouseButtonUp(0)) {
+                    settings.Write();
+                    SoundDefOf.Click.PlayOneShotOnCamera();
+                    costInputWindowActive = true;
+                    costInput = GetCurrentResearchCost();
+                    costInputBuffer = GetCurrentResearchCost().ToString();
+                    Log.Message($"current: {GetCurrentResearchCost()} | costInput: {costInput} | costInputBuffer: {costInputBuffer}");
+                }
+            }
 
-            listingStandard.Label($"Training Targets Cost: {settings.TrainingTargetsCost}", -1, "Cost of Training Targets research");
-            if (settings.TrainingTargetsCost > 0) { listingStandard.IntAdjuster(ref settings.TrainingTargetsCost, normalInc, 100); }
-            else { listingStandard.IntAdjuster(ref settings.TrainingTargetsCost, lockedInc, 0); }
+            if (costInputWindowActive) {
+                DrawCostInputWindow();
+            }
 
-            listingStandard.Label($"Spacer Plants Cost: {settings.SpacerPlantsCost}", -1, "Cost of Spacer Plants research");
-            if (settings.SpacerPlantsCost > 0) { listingStandard.IntAdjuster(ref settings.SpacerPlantsCost, normalInc, 100); }
-            else { listingStandard.IntAdjuster(ref settings.SpacerPlantsCost, lockedInc, 0); }
+            TextAnchor anchor = Text.Anchor;
+            Text.Anchor = TextAnchor.MiddleCenter;
+            Widgets.Label(researchCostLabel, $"Research Cost: {GetCurrentResearchCost()}");
+            Text.Anchor = anchor;
+
+            // + / - Buttons
+            Rect decreaseRect10 = researchCostLabel;
+            decreaseRect10.width = 50;
+            decreaseRect10.x -= decreaseRect10.width;
+            Rect decreaseRect100 = decreaseRect10;
+            decreaseRect100.x -= decreaseRect10.width;
+            Rect decreaseRect1000 = decreaseRect100;
+            decreaseRect1000.x -= decreaseRect100.width;
+
+            Rect increaseRect10 = researchCostLabel;
+            increaseRect10.width = 50;
+            increaseRect10.x += researchCostLabel.width;
+            Rect increaseRect100 = increaseRect10;
+            increaseRect100.x += increaseRect10.width;
+            Rect increaseRect1000 = increaseRect100;
+            increaseRect1000.x += increaseRect100.width;
+
+            int currentCost = GetCurrentResearchCost();
+
+            if (currentCost > 0) {
+                if (Widgets.ButtonText(decreaseRect10, "-10")) {
+                    if (currentCost - 10 <= 0) {
+                        SetCurrentResarchCost(0);
+                    }
+                    else {
+                        SetCurrentResarchCost(currentCost - 10);
+                    }
+                    Log.Message("-10"); 
+                }
+                if (Widgets.ButtonText(decreaseRect100, "-100")) {
+                    if (currentCost - 100 <= 0) {
+                        SetCurrentResarchCost(0);
+                    }
+                    else {
+                        SetCurrentResarchCost(currentCost - 100);
+                    }
+                    Log.Message("-100"); 
+                }
+                if (Widgets.ButtonText(decreaseRect1000, "-1000")) {
+                    if (currentCost - 1000 <= 0) {
+                        SetCurrentResarchCost(0);
+                    }
+                    else {
+                        SetCurrentResarchCost(currentCost - 1000);
+                    }
+                    Log.Message("-1000"); 
+                }
+            }
+            
+            int maxCost = 1_000_000;
+            if (currentCost < maxCost) {
+                if (Widgets.ButtonText(increaseRect10, "+10")) {
+                    if (currentCost + 10 >= maxCost) {
+                        SetCurrentResarchCost(maxCost);
+                    }
+                    else {
+                        SetCurrentResarchCost(currentCost + 10);
+                    }
+                    Log.Message("+10");
+                }
+                if (Widgets.ButtonText(increaseRect100, "+100")) {
+                    if (currentCost + 100 >= maxCost) {
+                        SetCurrentResarchCost(maxCost);
+                    }
+                    else {
+                        SetCurrentResarchCost(currentCost + 100);
+                    }
+                    Log.Message("+100");
+                }
+                if (Widgets.ButtonText(increaseRect1000, "+1000")) {
+                    if (currentCost + 1000 >= maxCost) {
+                        SetCurrentResarchCost(maxCost);
+                    }
+                    else {
+                        SetCurrentResarchCost(currentCost + 1000);
+                    }
+                    Log.Message("+1000");
+                }
+            }
+
+            // Buffer
+            listingStandard.GetRect(9);
+
+            // Override Empty Research
+            bool emptyOverride;
+            if (!settings.EmptyResearchOverride.NullOrEmpty()) {
+                emptyOverride = settings.EmptyResearchOverride.Contains(currentResearch.Replace(" ", ""));
+            }
+            else {
+                emptyOverride = false;
+            }
+
+            if (!settings.emptyResearch && settings.ResearchCostBackup.Keys.Contains($"{currentResearch.Replace(" ", "")}Cost")) {
+                Rect overrideRect = listingStandard.GetRect(buttonHeight);
+                overrideRect.width -= 20;
+                overrideRect.x += 10;
+
+                Listing_Standard overrideList = new Listing_Standard();
+                overrideList.Begin(overrideRect);
+                if (RimAges_Utility.CustomCheckboxButton(overrideList, "Override Empty Research Setting", emptyOverride, "Override the empty research option to allow this research to have a cost.")) {
+                    if (!emptyOverride) {
+                        if (settings.EmptyResearchOverride.NullOrEmpty()) {
+                            settings.EmptyResearchOverride = new List<string> { currentResearch.Replace(" ", "") };
+                        }
+                        else {
+                            settings.EmptyResearchOverride.Add(currentResearch.Replace(" ", ""));
+                        }
+                        // Set current cost to backup to avoid instantly setting it to 0
+                        SetCurrentResarchCost(settings.ResearchCostBackup[$"{currentResearch.Replace(" ", "")}Cost"]);
+                    }
+                    else {
+                        settings.EmptyResearchOverride.Remove(currentResearch.Replace(" ", ""));
+                    }
+                    RimAges.ApplyEmptyResearch();
+                }
+                overrideList.End();
+            }
 
             listingStandard.End();
         }
@@ -409,14 +645,7 @@ namespace RimAges {
             listingStandard.End();
 
             // Current Research Drop Down
-            if (researchDropDownActive) {
-                float researchDropDownSizeX = 400;
-                float researchDropDownSizeY = 360;
-                Rect researchDropDown = new Rect((Screen.width / 2) - (researchDropDownSizeX / 2), ((Screen.height / 2) - (researchDropDownSizeY / 2))-65, researchDropDownSizeX, researchDropDownSizeY);
-                Find.WindowStack.ImmediateWindow(12, researchDropDown, WindowLayer.Super, () => {
-                    DrawResearchDropDown(researchDropDown, listingStandard);
-                }, true, true, 1, () => { researchDropDownActive = false; });
-            }
+            if (researchDropDownActive) { DrawResearchDropDown(listingStandard); }
 
             // Filter Drop Down
             if (filterDropDownActive) {
@@ -1088,70 +1317,78 @@ namespace RimAges {
             Text.Font = GameFont.Small;
         }
 
-        public static void DrawResearchDropDown(Rect dropDown, Listing_Standard listingStandard) {
-            Rect dropRect = dropDown.ContractedBy(10f);
-            dropRect.position = new Vector2(10, 10);
+        public static void DrawResearchDropDown(Listing_Standard listingStandard) {
+            float researchDropDownSizeX = 400;
+            float researchDropDownSizeY = 360;
+            Rect researchDropDown = new Rect((Screen.width / 2) - (researchDropDownSizeX / 2), ((Screen.height / 2) - (researchDropDownSizeY / 2)) - 65, researchDropDownSizeX, researchDropDownSizeY);
+            Find.WindowStack.ImmediateWindow(12, researchDropDown, WindowLayer.Super, () => {
+                Rect dropRect = researchDropDown.ContractedBy(10f);
+                dropRect.position = new Vector2(10, 10);
 
-            Rect leftRect = dropRect;
-            leftRect.xMax -= (leftRect.width / 2) + 10;
+                Rect leftRect = dropRect;
+                leftRect.xMax -= (leftRect.width / 2) + 10;
 
-            Rect rightRect = dropRect;
-            rightRect.xMin += (rightRect.width / 2) + 10;
+                Rect rightRect = dropRect;
+                rightRect.xMin += (rightRect.width / 2) + 10;
 
-            listingStandard.Begin(leftRect);
-            if (listingStandard.RadioButton("Medieval Age", currentResearch == "Medieval Age")) {
-                currentResearch = "Medieval Age";
-                researchDropDownActive = false;
-            }
-            if (listingStandard.RadioButton("Industrial Age", currentResearch == "Industrial Age")) {
-                currentResearch = "Industrial Age";
-                researchDropDownActive = false;
-            }
-            if (listingStandard.RadioButton("Spacer Age", currentResearch == "Spacer Age")) {
-                currentResearch = "Spacer Age";
-                researchDropDownActive = false;
-            }
-            if (listingStandard.RadioButton("Ultra Age", currentResearch == "Ultra Age")) {
-                currentResearch = "Ultra Age";
-                researchDropDownActive = false;
-            }
-            if (listingStandard.RadioButton("Archotech Age", currentResearch == "Archotech Age")) {
-                currentResearch = "Archotech Age";
-                researchDropDownActive = false;
-            }
-            listingStandard.End();
+                listingStandard.Begin(leftRect);
+                if (listingStandard.RadioButton("Medieval Age", currentResearch == "Medieval Age")) {
+                    currentResearch = "Medieval Age";
+                    researchDropDownActive = false;
+                }
+                if (listingStandard.RadioButton("Industrial Age", currentResearch == "Industrial Age")) {
+                    currentResearch = "Industrial Age";
+                    researchDropDownActive = false;
+                }
+                if (listingStandard.RadioButton("Spacer Age", currentResearch == "Spacer Age")) {
+                    currentResearch = "Spacer Age";
+                    researchDropDownActive = false;
+                }
+                if (listingStandard.RadioButton("Ultra Age", currentResearch == "Ultra Age")) {
+                    currentResearch = "Ultra Age";
+                    researchDropDownActive = false;
+                }
+                if (listingStandard.RadioButton("Archotech Age", currentResearch == "Archotech Age")) {
+                    currentResearch = "Archotech Age";
+                    researchDropDownActive = false;
+                }
+                listingStandard.End();
 
-            listingStandard.Begin(rightRect);
-            if (listingStandard.RadioButton("Medieval Cooking", currentResearch == "Medieval Cooking")) {
-                currentResearch = "Medieval Cooking";
-                researchDropDownActive = false;
-            }
-            if (listingStandard.RadioButton("Medieval Defenses", currentResearch == "Medieval Defenses")) {
-                currentResearch = "Medieval Defenses";
-                researchDropDownActive = false;
-            }
-            if (listingStandard.RadioButton("Medieval Hygiene", currentResearch == "Medieval Hygiene")) {
-                currentResearch = "Medieval Hygiene";
-                researchDropDownActive = false;
-            }
-            if (listingStandard.RadioButton("Medieval Research", currentResearch == "Medieval Research")) {
-                currentResearch = "Medieval Research";
-                researchDropDownActive = false;
-            }
-            if (listingStandard.RadioButton("Training Targets", currentResearch == "Training Targets")) {
-                currentResearch = "Training Targets";
-                researchDropDownActive = false;
-            }
-            if (listingStandard.RadioButton("Spacer Plants", currentResearch == "Spacer Plants")) {
-                currentResearch = "Spacer Plants";
-                researchDropDownActive = false;
-            }
-            listingStandard.End();
+                listingStandard.Begin(rightRect);
+                if (listingStandard.RadioButton("Medieval Cooking", currentResearch == "Medieval Cooking")) {
+                    currentResearch = "Medieval Cooking";
+                    researchDropDownActive = false;
+                }
+                if (listingStandard.RadioButton("Medieval Defenses", currentResearch == "Medieval Defenses")) {
+                    currentResearch = "Medieval Defenses";
+                    researchDropDownActive = false;
+                }
+                if (listingStandard.RadioButton("Medieval Hygiene", currentResearch == "Medieval Hygiene")) {
+                    currentResearch = "Medieval Hygiene";
+                    researchDropDownActive = false;
+                }
+                if (listingStandard.RadioButton("Medieval Research", currentResearch == "Medieval Research")) {
+                    currentResearch = "Medieval Research";
+                    researchDropDownActive = false;
+                }
+                if (listingStandard.RadioButton("Training Targets", currentResearch == "Training Targets")) {
+                    currentResearch = "Training Targets";
+                    researchDropDownActive = false;
+                }
+                if (listingStandard.RadioButton("Spacer Plants", currentResearch == "Spacer Plants")) {
+                    currentResearch = "Spacer Plants";
+                    researchDropDownActive = false;
+                }
+                listingStandard.End();
 
-            if (!researchDropDownActive) {
-                leftDefDict = UpdateDefDict(null);
-                rightDefDict = UpdateDefDict(currentResearch);
-            }
+                if (!researchDropDownActive) {
+                    RimAgesSettings settings = LoadedModManager.GetMod<RimAgesMod>().GetSettings<RimAgesSettings>();
+                    if (settings.tab == 2) {
+                        leftDefDict = UpdateDefDict(null);
+                        rightDefDict = UpdateDefDict(currentResearch);
+                    }
+                }
+            }, true, true, 1, () => { researchDropDownActive = false; });
         }
 
         public static void DrawFilterDropDown(Rect dropDown, Listing_Standard listingStandard) {
@@ -1161,6 +1398,29 @@ namespace RimAges {
             listingStandard.Begin(dropRect);
             listingStandard.CheckboxLabeled("Exclude Assigned Defs", ref assignedDefsFilter);
             listingStandard.End();
+        }
+
+        public static void DrawCostInputWindow() {
+            float costInputWindowSizeX = 150;
+            float costInputWindowSizeY = 40;
+            Rect costInputWindow = new Rect((Screen.width / 2) - (costInputWindowSizeX / 2), (Screen.height / 2) - 195, costInputWindowSizeX, costInputWindowSizeY);
+            Find.WindowStack.ImmediateWindow(12, costInputWindow, WindowLayer.Super, () => {
+                Rect dropRect = costInputWindow.ContractedBy(10f);
+                dropRect.position = new Vector2(10, 10);
+
+                Widgets.TextFieldNumeric(dropRect, ref costInput, ref costInputBuffer);
+            }, true, true, 1, () => { 
+                costInputWindowActive = false;
+                if (costInput < 0) {
+                    SetCurrentResarchCost(0);
+                }
+                else if (costInput > 1_000_000) {
+                    SetCurrentResarchCost(1_000_000);
+                }
+                else {
+                    SetCurrentResarchCost(costInput);
+                }
+            });
         }
 
         public static void DrawResearchFilters(Rect contentRect, RimAgesSettings settings) {
@@ -1339,11 +1599,34 @@ namespace RimAges {
 
                 if (settings.ResearchCostBackup.NullOrEmpty()) { Init(); }
 
-                if (settings.MedievalCookingCost > 0) { settings.ResearchCostBackup["MedievalCookingCost"] = settings.MedievalCookingCost; }
-                if (settings.MedievalDefensesCost > 0) { settings.ResearchCostBackup["MedievalDefensesCost"] = settings.MedievalDefensesCost; }
+                if (settings.emptyResearch) { settings.ResearchCostBackup["MedievalCookingCost"] = settings.MedievalCookingCost; }
+                else if (settings.EmptyResearchOverride.NullOrEmpty()) { if (settings.MedievalCookingCost > 0) { settings.ResearchCostBackup["MedievalCookingCost"] = settings.MedievalCookingCost; } }
+                else if (settings.EmptyResearchOverride.Contains("MedievalCooking")) { settings.ResearchCostBackup["MedievalCookingCost"] = settings.MedievalCookingCost; }
+                else if (settings.MedievalCookingCost > 0) { settings.ResearchCostBackup["MedievalCookingCost"] = settings.MedievalCookingCost; }
+
+                if (settings.emptyResearch) { settings.ResearchCostBackup["MedievalDefensesCost"] = settings.MedievalDefensesCost; }
+                else if (settings.EmptyResearchOverride.NullOrEmpty()) { if (settings.MedievalDefensesCost > 0) { settings.ResearchCostBackup["MedievalDefensesCost"] = settings.MedievalDefensesCost; } }
+                else if (settings.EmptyResearchOverride.Contains("MedievalDefenses")) { settings.ResearchCostBackup["MedievalDefensesCost"] = settings.MedievalDefensesCost; }
+                else if (settings.MedievalDefensesCost > 0) { settings.ResearchCostBackup["MedievalDefensesCost"] = settings.MedievalDefensesCost; }
+
+                if (settings.emptyResearch) { settings.ResearchCostBackup["MedievalHygieneCost"] = settings.MedievalHygieneCost; }
+                else if (settings.EmptyResearchOverride.NullOrEmpty()) { if (settings.MedievalHygieneCost > 0) { settings.ResearchCostBackup["MedievalHygieneCost"] = settings.MedievalHygieneCost; } }
+                else if (settings.EmptyResearchOverride.Contains("MedievalHygiene")) { settings.ResearchCostBackup["MedievalHygieneCost"] = settings.MedievalHygieneCost; }
                 if (settings.MedievalHygieneCost > 0) { settings.ResearchCostBackup["MedievalHygieneCost"] = settings.MedievalHygieneCost; }
+
+                if (settings.emptyResearch) { settings.ResearchCostBackup["MedievalResearchCost"] = settings.MedievalResearchCost; }
+                else if (settings.EmptyResearchOverride.NullOrEmpty()) { if (settings.MedievalResearchCost > 0) { settings.ResearchCostBackup["MedievalResearchCost"] = settings.MedievalResearchCost; } }
+                else if (settings.EmptyResearchOverride.Contains("MedievalResearch")) { settings.ResearchCostBackup["MedievalResearchCost"] = settings.MedievalResearchCost; }
                 if (settings.MedievalResearchCost > 0) { settings.ResearchCostBackup["MedievalResearchCost"] = settings.MedievalResearchCost; }
+
+                if (settings.emptyResearch) { settings.ResearchCostBackup["TrainingTargetsCost"] = settings.TrainingTargetsCost; }
+                else if (settings.EmptyResearchOverride.NullOrEmpty()) { if (settings.TrainingTargetsCost > 0) { settings.ResearchCostBackup["TrainingTargetsCost"] = settings.TrainingTargetsCost; } }
+                else if (settings.EmptyResearchOverride.Contains("TrainingTargets")) { settings.ResearchCostBackup["TrainingTargetsCost"] = settings.TrainingTargetsCost; }
                 if (settings.TrainingTargetsCost > 0) { settings.ResearchCostBackup["TrainingTargetsCost"] = settings.TrainingTargetsCost; }
+
+                if (settings.emptyResearch) { settings.ResearchCostBackup["SpacerPlantsCost"] = settings.SpacerPlantsCost; }
+                else if (settings.EmptyResearchOverride.NullOrEmpty()) { if (settings.SpacerPlantsCost > 0) { settings.ResearchCostBackup["SpacerPlantsCost"] = settings.SpacerPlantsCost; } }
+                else if (settings.EmptyResearchOverride.Contains("SpacerPlants")) { settings.ResearchCostBackup["SpacerPlantsCost"] = settings.SpacerPlantsCost; }
                 if (settings.SpacerPlantsCost > 0) { settings.ResearchCostBackup["SpacerPlantsCost"] = settings.SpacerPlantsCost; }
             }
 

@@ -294,7 +294,7 @@ namespace RimAges {
                     if (def.modContentPack.ToString() == "markflynnman.rimages") {
                         if (techAgeResearch.Contains(def)) { continue; }
                         Log.Warning($"{modTag} - {def.defName}: {def.UnlockedDefs.Count}");
-                        if (def.UnlockedDefs.Count == 0) {
+                        if (def.UnlockedDefs.Count == 0 && !settings.EmptyResearchOverride.Contains(def.defName)) {
                             switch (def.defName) {
                                 case "MedievalCooking":
                                     settings.MedievalCookingCost = 0;
